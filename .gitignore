@@ -1,0 +1,91 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks used specifically for the VS Code editor
+# as well as settings which can be shared or kept separate per-user.
+.vscode/
+
+# Flutter-specific
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Android-specific
+android/app/src/main/res/drawable-*/
+android/app/src/main/res/mipmap-*/
+android/app/src/main/res/values/strings.xml
+android/key.properties
+android/local.properties
+android/.gradle/
+android/app/local.properties
+android/app/src/main/res/raw/
+android/app/src/main/res/values/google-services.json
+android/app/src/main/res/values/styles.xml
+android/build/
+android/captures/
+android/gen/
+android/gradle/
+android/gradlew
+android/gradlew.bat
+android/idea/
+android/local.properties
+android/out/
+android/proguard-project.txt
+android/project.properties
+android/settings.gradle
+android/src/main/res/values/strings.xml
+android/build/
+android/app/build/
+android/.idea/
+
+# iOS-specific
+ios/.generated/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Pods/
+ios/Runner.xcworkspace/xcuserdata/
+ios/Runner/GeneratedPluginRegistrant.h
+ios/Runner/GeneratedPluginRegistrant.m
+ios/ServiceDefinitions.json
+ios/build/
+ios/Podfile.lock
+
+# Web-specific
+lib/generated_plugin_registrant.dart
+
+# Symbolication related
+app.*.symbols
+app.*.map.json
+
+# Linux-specific
+linux/flutter/ephemeral/
+linux/build/
+
+# macOS-specific
+macos/flutter/ephemeral/
+macos/build/
+
+# Windows-specific
+windows/flutter/ephemeral/
+windows/build/
