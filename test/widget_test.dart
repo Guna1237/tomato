@@ -8,7 +8,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:tomato/main.dart';
+import 'package:tomato/app.dart';
 
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
