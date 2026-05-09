@@ -12,7 +12,8 @@ serve(async (req) => {
   }
 
   try {
-    const { user_id, email, employee_id } = await req.json()
+    const body = await req.json()
+    const { user_id, email, display_name, roll_number, photo_path, face_confidence } = body
 
     if (!user_id || !email) {
       return new Response(
@@ -39,83 +40,80 @@ serve(async (req) => {
 
     const prefix = parts[0]
     const studentRegex = /^[a-z]{2}\d{2}[a-z]{4}\d{3}$/
-    const facultyRegex = /^[a-z]+\.[a-z]+$/
 
-    let role: string
-    let rollNumber: string | null = null
-    let displayName: string
+    // Determine role from email prefix
+    let role = 'student'
+    let detectedRollNumber: string | null = null
 
     if (studentRegex.test(prefix)) {
       role = 'student'
-      rollNumber = prefix
-      displayName = prefix.toUpperCase()
-    } else if (facultyRegex.test(prefix)) {
-      role = 'faculty'
-      const nameParts = prefix.split('.')
-      displayName = nameParts.map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')
-
-      if (!employee_id) {
-        return new Response(
-          JSON.stringify({ error: 'Employee ID required for faculty' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      const { data: facultyRecord, error: registryError } = await supabase
-        .from('faculty_registry')
-        .select('id')
-        .eq('email', emailLower)
-        .eq('employee_id', employee_id)
-        .single()
-
-      if (registryError || !facultyRecord) {
-        return new Response(
-          JSON.stringify({ error: 'Employee ID does not match our records. Contact admin.' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
+      detectedRollNumber = roll_number || prefix.toUpperCase()
     } else {
-      return new Response(
-        JSON.stringify({ error: 'Email format not recognized as student or faculty' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      // Faculty or other — still allow signup
+      role = 'faculty'
     }
 
-    // Insert profile
+    // Determine face_status from confidence sent by client ML Kit
+    const confidence = typeof face_confidence === 'number' ? face_confidence : 0
+    const faceStatus = confidence >= 0.65 ? 'approved' : 'pending'
+
+    // Build photo_url if photo was uploaded
+    let photoUrl: string | null = null
+    if (photo_path) {
+      const { data } = supabase.storage.from('profile-photos').getPublicUrl(photo_path)
+      photoUrl = data?.publicUrl ?? null
+    }
+
+    // Use provided display_name or fall back to email prefix
+    const name = display_name?.trim() || prefix.toUpperCase()
+
+    // Upsert profile — handles both new users and re-runs after partial failure
     const { error: profileError } = await supabase
       .from('profiles')
-      .insert({
+      .upsert({
         id: user_id,
         email: emailLower,
         role,
-        display_name: displayName,
-        roll_number: rollNumber,
-        employee_id: role === 'faculty' ? employee_id : null,
-        face_status: 'pending',
+        display_name: name,
+        roll_number: detectedRollNumber,
+        photo_url: photoUrl,
+        face_status: faceStatus,
+        face_confidence: confidence,
         tomato_credits: 50,
+      }, { onConflict: 'id', ignoreDuplicates: false })
+
+    if (profileError) throw profileError
+
+    // Signup bonus — only insert if no prior transactions for this user
+    const { count } = await supabase
+      .from('credit_transactions')
+      .select('id', { count: 'exact', head: true })
+      .eq('to_user_id', user_id)
+      .eq('type', 'signup')
+
+    if (!count || count === 0) {
+      await supabase.from('credit_transactions').insert({
+        to_user_id: user_id,
+        amount: 50,
+        type: 'signup',
       })
 
-    if (profileError && profileError.code !== '23505') { // ignore duplicate
-      throw profileError
+      await supabase.from('notifications').insert({
+        user_id,
+        title: 'Welcome to Tomato',
+        body: 'You received 50 tomato credits to get started!',
+        type: 'system',
+      })
     }
 
-    // Insert signup bonus transaction
-    await supabase.from('credit_transactions').insert({
-      to_user_id: user_id,
-      amount: 50,
-      type: 'signup',
-    })
-
-    // Insert welcome notification
-    await supabase.from('notifications').insert({
-      user_id,
-      title: 'Welcome to Tomato 🍅',
-      body: `You received 50 tomato credits to get started!`,
-      type: 'system',
-    })
-
     return new Response(
-      JSON.stringify({ role, roll_number: rollNumber, display_name: displayName, message: 'Identity verified' }),
+      JSON.stringify({
+        role,
+        roll_number: detectedRollNumber,
+        display_name: name,
+        face_status: faceStatus,
+        message: 'Profile created',
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (err) {

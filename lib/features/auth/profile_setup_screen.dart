@@ -41,6 +41,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   void initState() {
     super.initState();
+    // Pre-fill name from email prefix so user doesn't start with a blank field
+    final email = supabase.auth.currentUser?.email ?? '';
+    final prefix = email.split('@').first;
+    if (prefix.isNotEmpty) {
+      _nameController.text = prefix.toUpperCase();
+      _nameHasValue = true;
+    }
     _nameController.addListener(_onNameChanged);
   }
 
@@ -218,14 +225,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 24),
-                      Text('Step 3 of 4',
+                      Text('One last step',
                           style: AppTextStyles.micro(color: AppColors.punchRed)),
                       const SizedBox(height: 10),
                       Text('Set up your profile',
                           style: AppTextStyles.h1(color: fg1)),
                       const SizedBox(height: 8),
                       Text(
-                        'Add a face photo and your name to get started. Your photo is used to verify identity during delivery handoffs.',
+                        'Add a clear face photo. Runners and requesters use it to confirm handoffs on campus.',
                         style: AppTextStyles.body(color: AppColors.lavenderGrey),
                       ),
                       const SizedBox(height: 32),
