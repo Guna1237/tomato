@@ -83,7 +83,9 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   Future<void> _verifyOtp() async {
-    final email = GoRouterState.of(context).uri.queryParameters['email'] ?? '';
+    final params = GoRouterState.of(context).uri.queryParameters;
+    final email = params['email'] ?? '';
+    final mode = params['mode'] ?? '';
     final otpCode = _digits.join();
     setState(() => _isLoading = true);
     try {
@@ -92,22 +94,36 @@ class _OtpScreenState extends State<OtpScreen> {
         token: otpCode,
         type: OtpType.email,
       );
+      if (!mounted) return;
+      if (mode == 'signup') {
+        // New user — always go to profile setup
+        context.go('/profile-setup');
+        return;
+      }
+      // Otherwise check if profile exists
       final profile = await supabase
           .from('profiles')
           .select()
           .eq('id', supabase.auth.currentUser!.id)
           .maybeSingle();
       if (mounted) {
-        if (profile == null) {
-          context.go('/profile-setup');
-        } else {
-          context.go('/home');
-        }
+        context.go(profile == null ? '/profile-setup' : '/home');
       }
     } catch (e) {
       if (mounted) {
+        final msg = e.toString().toLowerCase().contains('invalid') ||
+                e.toString().toLowerCase().contains('expired')
+            ? 'Invalid or expired code — check your email and try again'
+            : 'Something went wrong, try again';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+          SnackBar(
+            content: Text(msg),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.spaceIndigo,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          ),
         );
         setState(() {
           for (int i = 0; i < _digits.length; i++) {
@@ -149,9 +165,9 @@ class _OtpScreenState extends State<OtpScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Step 2 of 4', style: AppTextStyles.micro(color: brand)),
+                  Text('Verify email', style: AppTextStyles.micro(color: brand)),
                   const SizedBox(height: 10),
-                  Text('Check your email', style: AppTextStyles.h1(color: fg1)),
+                  Text('Check your inbox', style: AppTextStyles.h1(color: fg1)),
                   const SizedBox(height: 8),
                   Text(
                     'We sent a 6-digit code to\n${GoRouterState.of(context).uri.queryParameters['email'] ?? ''}',
@@ -202,17 +218,27 @@ class _OtpScreenState extends State<OtpScreen> {
                         const SizedBox(width: 4),
                         GestureDetector(
                           onTap: () async {
-                            final email = GoRouterState.of(context).uri.queryParameters['email'] ?? '';
+                            final params = GoRouterState.of(context).uri.queryParameters;
+                            final email = params['email'] ?? '';
                             final messenger = ScaffoldMessenger.of(context);
                             try {
-                              await supabase.auth.signInWithOtp(email: email, shouldCreateUser: false);
+                              await supabase.auth.resend(
+                                type: OtpType.signup,
+                                email: email,
+                              );
                               setState(() => _secondsLeft = 42);
                               _startTimer();
                             } catch (e) {
                               final msg = e.toString().contains('429') || e.toString().toLowerCase().contains('rate')
-                                  ? 'Too many requests - wait a minute before resending'
-                                  : e.toString();
-                              messenger.showSnackBar(SnackBar(content: Text(msg)));
+                                  ? 'Too many requests — wait a minute before resending'
+                                  : 'Could not resend — try again';
+                              messenger.showSnackBar(SnackBar(
+                                content: Text(msg),
+                                behavior: SnackBarBehavior.floating,
+                                backgroundColor: AppColors.spaceIndigo,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                              ));
                               setState(() => _secondsLeft = 60);
                               _startTimer();
                             }

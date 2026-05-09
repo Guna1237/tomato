@@ -15,13 +15,14 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
-  // false = sign in (password), true = sign up (OTP)
   bool _isSignUp = false;
   bool _isLoading = false;
 
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
   bool _showPassword = false;
+  bool _showConfirm = false;
 
   late final TabController _tabController;
 
@@ -35,6 +36,7 @@ class _LoginScreenState extends State<LoginScreen>
           _isSignUp = _tabController.index == 1;
           _emailCtrl.clear();
           _passwordCtrl.clear();
+          _confirmCtrl.clear();
         });
       }
     });
@@ -44,6 +46,7 @@ class _LoginScreenState extends State<LoginScreen>
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
+    _confirmCtrl.dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -51,6 +54,7 @@ class _LoginScreenState extends State<LoginScreen>
   bool _validEmail(String email) =>
       email.trim().toLowerCase().endsWith('@mahindrauniversity.edu.in');
 
+  // Sign in: email + password
   Future<void> _signIn() async {
     final email = _emailCtrl.text.trim().toLowerCase();
     final password = _passwordCtrl.text;
@@ -75,24 +79,51 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  // Sign up sends OTP to email — no password needed for first-time users
+  // Sign up: email + password + confirm → send OTP → verify → profile setup
   Future<void> _signUp() async {
     final email = _emailCtrl.text.trim().toLowerCase();
+    final password = _passwordCtrl.text;
+    final confirm = _confirmCtrl.text;
 
     if (!_validEmail(email)) {
       _showError('Must be a @mahindrauniversity.edu.in address');
       return;
     }
+    if (password.length < 6) {
+      _showError('Password must be at least 6 characters');
+      return;
+    }
+    if (password != confirm) {
+      _showError('Passwords do not match');
+      return;
+    }
 
     setState(() => _isLoading = true);
     try {
-      await supabase.auth.signInWithOtp(
-        email: email,
-        shouldCreateUser: true,
-        emailRedirectTo: null,
-      );
+      // signUp creates the account with a password AND sends OTP to verify email
+      await supabase.auth.signUp(email: email, password: password);
       if (mounted) {
-        context.go('/otp?email=${Uri.encodeComponent(email)}');
+        context.go('/otp?email=${Uri.encodeComponent(email)}&mode=signup');
+      }
+    } catch (e) {
+      if (mounted) _showError(_friendlyError(e.toString()));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // Forgot / set password: sends a magic link / OTP for password reset
+  Future<void> _forgotPassword() async {
+    final email = _emailCtrl.text.trim().toLowerCase();
+    if (!_validEmail(email)) {
+      _showError('Enter your MU email above first');
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      await supabase.auth.resetPasswordForEmail(email);
+      if (mounted) {
+        _showInfo('Password reset link sent to $email');
       }
     } catch (e) {
       if (mounted) _showError(_friendlyError(e.toString()));
@@ -106,8 +137,11 @@ class _LoginScreenState extends State<LoginScreen>
     if (r.contains('invalid login') || r.contains('invalid credentials')) {
       return 'Incorrect email or password';
     }
+    if (r.contains('already registered') || r.contains('user already')) {
+      return 'Account already exists — sign in instead';
+    }
     if (r.contains('email not confirmed')) {
-      return 'Check your email to confirm your account';
+      return 'Check your email inbox for the verification code';
     }
     if (r.contains('rate') || r.contains('429')) {
       return 'Too many attempts — wait a minute and try again';
@@ -130,12 +164,23 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
+  void _showInfo(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.leaf500,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      ),
+    );
+  }
+
   InputDecoration _field({required String hint, Widget? suffix}) {
     return InputDecoration(
       hintText: hint,
       hintStyle: AppTextStyles.body(
-        color: AppColors.lavenderGrey.withValues(alpha: 0.7),
-      ),
+          color: AppColors.lavenderGrey.withValues(alpha: 0.7)),
       suffixIcon: suffix,
       filled: true,
       fillColor: Colors.white,
@@ -151,9 +196,19 @@ class _LoginScreenState extends State<LoginScreen>
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: AppColors.punchRed, width: 1.5),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
     );
   }
+
+  Widget _eyeIcon(bool visible, VoidCallback toggle) => IconButton(
+        icon: Icon(
+          visible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+          color: AppColors.lavenderGrey,
+          size: 20,
+        ),
+        onPressed: toggle,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -161,13 +216,11 @@ class _LoginScreenState extends State<LoginScreen>
       backgroundColor: AppColors.bgCanvas,
       body: Column(
         children: [
-          // Thin red accent bar
           Container(
             height: 3,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.punchRed, Color(0xFFFF6A55)],
-              ),
+                  colors: [AppColors.punchRed, Color(0xFFFF6A55)]),
             ),
           ),
           Expanded(
@@ -180,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen>
                   children: [
                     const SizedBox(height: 40),
 
-                    // Logo row
+                    // Logo
                     Row(
                       children: [
                         const TomatoMark(size: 40),
@@ -201,24 +254,23 @@ class _LoginScreenState extends State<LoginScreen>
 
                     const SizedBox(height: 36),
 
-                    // Tab switcher: Sign in / Sign up
+                    // Tab switcher
                     Container(
                       height: 44,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(14),
                         border: const Border.fromBorderSide(
-                          BorderSide(color: Color(0xFFE8EAF0)),
-                        ),
+                            BorderSide(color: Color(0xFFE8EAF0))),
                       ),
                       child: TabBar(
                         controller: _tabController,
-                        labelStyle: AppTextStyles.bodySmSemibold(
-                            color: Colors.white),
-                        unselectedLabelStyle: AppTextStyles.bodySm(
-                            color: AppColors.lavenderGrey),
                         labelColor: Colors.white,
                         unselectedLabelColor: AppColors.lavenderGrey,
+                        labelStyle: AppTextStyles.bodySmSemibold(
+                            color: Colors.white),
+                        unselectedLabelStyle:
+                            AppTextStyles.bodySm(color: AppColors.lavenderGrey),
                         indicator: BoxDecoration(
                           color: AppColors.punchRed,
                           borderRadius: BorderRadius.circular(11),
@@ -235,53 +287,57 @@ class _LoginScreenState extends State<LoginScreen>
 
                     const SizedBox(height: 28),
 
-                    // Heading changes with tab
                     Text(
                       _isSignUp ? 'Create account' : 'Welcome back',
-                      style: AppTextStyles.h1(color: AppColors.spaceIndigo),
+                      style:
+                          AppTextStyles.h1(color: AppColors.spaceIndigo),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _isSignUp
-                          ? 'Enter your university email — we\'ll send you a one-time code'
+                          ? 'Choose a password — we\'ll verify your email with a code'
                           : 'Sign in to your university account',
-                      style: AppTextStyles.body(color: AppColors.lavenderGrey),
+                      style:
+                          AppTextStyles.body(color: AppColors.lavenderGrey),
                     ),
 
                     const SizedBox(height: 24),
 
-                    // Email field (always shown)
+                    // Email
                     TextField(
                       controller: _emailCtrl,
                       keyboardType: TextInputType.emailAddress,
                       autocorrect: false,
                       style: AppTextStyles.body(color: AppColors.spaceIndigo),
                       decoration: _field(
-                        hint: 'rollnumber@mahindrauniversity.edu.in',
+                          hint: 'rollnumber@mahindrauniversity.edu.in'),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Password
+                    TextField(
+                      controller: _passwordCtrl,
+                      obscureText: !_showPassword,
+                      style: AppTextStyles.body(color: AppColors.spaceIndigo),
+                      decoration: _field(
+                        hint: 'Password',
+                        suffix: _eyeIcon(_showPassword,
+                            () => setState(() => _showPassword = !_showPassword)),
                       ),
                     ),
 
-                    // Password field — sign in only
-                    if (!_isSignUp) ...[
+                    // Confirm password — sign up only
+                    if (_isSignUp) ...[
                       const SizedBox(height: 12),
                       TextField(
-                        controller: _passwordCtrl,
-                        obscureText: !_showPassword,
+                        controller: _confirmCtrl,
+                        obscureText: !_showConfirm,
                         style:
                             AppTextStyles.body(color: AppColors.spaceIndigo),
                         decoration: _field(
-                          hint: 'Password',
-                          suffix: IconButton(
-                            icon: Icon(
-                              _showPassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              color: AppColors.lavenderGrey,
-                              size: 20,
-                            ),
-                            onPressed: () => setState(
-                                () => _showPassword = !_showPassword),
-                          ),
+                          hint: 'Confirm password',
+                          suffix: _eyeIcon(_showConfirm,
+                              () => setState(() => _showConfirm = !_showConfirm)),
                         ),
                       ),
                     ],
@@ -289,7 +345,7 @@ class _LoginScreenState extends State<LoginScreen>
                     const SizedBox(height: 24),
 
                     TomatoButton(
-                      label: _isSignUp ? 'Send code' : 'Sign in',
+                      label: _isSignUp ? 'Continue' : 'Sign in',
                       isFullWidth: true,
                       size: TomatoButtonSize.lg,
                       isLoading: _isLoading,
@@ -297,6 +353,30 @@ class _LoginScreenState extends State<LoginScreen>
                           ? null
                           : (_isSignUp ? _signUp : _signIn),
                     ),
+
+                    // Forgot password — sign in tab only
+                    if (!_isSignUp) ...[
+                      const SizedBox(height: 16),
+                      Center(
+                        child: GestureDetector(
+                          onTap: _isLoading ? null : _forgotPassword,
+                          child: Text(
+                            'Forgot password? Send reset link',
+                            style: AppTextStyles.meta(
+                                color: AppColors.punchRed),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Center(
+                        child: Text(
+                          'Previously signed in with OTP? Use "Forgot password" to set one.',
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.meta(
+                              color: AppColors.lavenderGrey),
+                        ),
+                      ),
+                    ],
 
                     if (_isSignUp) ...[
                       const SizedBox(height: 16),
@@ -307,7 +387,7 @@ class _LoginScreenState extends State<LoginScreen>
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'A 6-digit code will be sent to your MU email inbox',
+                              'A 6-digit verification code will be sent to your MU email',
                               style: AppTextStyles.meta(
                                   color: AppColors.lavenderGrey),
                             ),
