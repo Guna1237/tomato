@@ -1,0 +1,5 @@
+# Exclude everything except the pre-built web output
+*
+!build/web
+!build/web/**
+!vercel.json
