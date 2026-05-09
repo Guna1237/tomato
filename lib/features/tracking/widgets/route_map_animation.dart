@@ -4,7 +4,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/theme/app_colors.dart';
 
 // Mahindra University, Survey No 62/1A, Bahadurpally, Jeedimetla, Hyderabad
-const _campusCenter = LatLng(17.5427, 78.3869);
+const _campusCenter = LatLng(17.5873, 78.4414);
 
 class RouteMapAnimation extends StatelessWidget {
   const RouteMapAnimation({super.key});

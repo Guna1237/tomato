@@ -8,7 +8,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/tomato_card.dart';
 
 // Mahindra University, Survey No 62/1A, Bahadurpally, Jeedimetla, Hyderabad
-const _campusCenter = LatLng(17.5427, 78.3869);
+const _campusCenter = LatLng(17.5873, 78.4414);
 
 class CampusMapCard extends StatelessWidget {
   const CampusMapCard({super.key});

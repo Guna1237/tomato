@@ -13,30 +13,49 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
+  // false = sign in (password), true = sign up (OTP)
   bool _isSignUp = false;
   bool _isLoading = false;
 
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  final _confirmCtrl = TextEditingController();
-
   bool _showPassword = false;
-  bool _showConfirm = false;
+
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {
+          _isSignUp = _tabController.index == 1;
+          _emailCtrl.clear();
+          _passwordCtrl.clear();
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
-    _confirmCtrl.dispose();
+    _tabController.dispose();
     super.dispose();
   }
+
+  bool _validEmail(String email) =>
+      email.trim().toLowerCase().endsWith('@mahindrauniversity.edu.in');
 
   Future<void> _signIn() async {
     final email = _emailCtrl.text.trim().toLowerCase();
     final password = _passwordCtrl.text;
 
-    if (!email.endsWith('@mahindrauniversity.edu.in')) {
+    if (!_validEmail(email)) {
       _showError('Must be a @mahindrauniversity.edu.in address');
       return;
     }
@@ -56,28 +75,25 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // Sign up sends OTP to email — no password needed for first-time users
   Future<void> _signUp() async {
     final email = _emailCtrl.text.trim().toLowerCase();
-    final password = _passwordCtrl.text;
-    final confirm = _confirmCtrl.text;
 
-    if (!email.endsWith('@mahindrauniversity.edu.in')) {
+    if (!_validEmail(email)) {
       _showError('Must be a @mahindrauniversity.edu.in address');
-      return;
-    }
-    if (password.length < 6) {
-      _showError('Password must be at least 6 characters');
-      return;
-    }
-    if (password != confirm) {
-      _showError('Passwords do not match');
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      await supabase.auth.signUp(email: email, password: password);
-      if (mounted) context.go('/profile-setup');
+      await supabase.auth.signInWithOtp(
+        email: email,
+        shouldCreateUser: true,
+        emailRedirectTo: null,
+      );
+      if (mounted) {
+        context.go('/otp?email=${Uri.encodeComponent(email)}');
+      }
     } catch (e) {
       if (mounted) _showError(_friendlyError(e.toString()));
     } finally {
@@ -86,9 +102,19 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   String _friendlyError(String raw) {
-    if (raw.contains('Invalid login')) return 'Incorrect email or password';
-    if (raw.contains('already registered')) return 'Account already exists — sign in instead';
-    if (raw.contains('Email not confirmed')) return 'Check your email to confirm your account';
+    final r = raw.toLowerCase();
+    if (r.contains('invalid login') || r.contains('invalid credentials')) {
+      return 'Incorrect email or password';
+    }
+    if (r.contains('email not confirmed')) {
+      return 'Check your email to confirm your account';
+    }
+    if (r.contains('rate') || r.contains('429')) {
+      return 'Too many attempts — wait a minute and try again';
+    }
+    if (r.contains('network') || r.contains('socket')) {
+      return 'No connection — check your internet';
+    }
     return 'Something went wrong, try again';
   }
 
@@ -135,7 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: AppColors.bgCanvas,
       body: Column(
         children: [
-          // Thin red accent bar at top
+          // Thin red accent bar
           Container(
             height: 3,
             decoration: const BoxDecoration(
@@ -154,7 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     const SizedBox(height: 40),
 
-                    // Logo row: mark + wordmark left-aligned
+                    // Logo row
                     Row(
                       children: [
                         const TomatoMark(size: 40),
@@ -162,18 +188,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'tomato',
-                              style: AppTextStyles.h2(
-                                color: AppColors.spaceIndigo,
-                              ),
-                            ),
-                            Text(
-                              'MU campus delivery',
-                              style: AppTextStyles.micro(
-                                color: AppColors.lavenderGrey,
-                              ),
-                            ),
+                            Text('tomato',
+                                style: AppTextStyles.h2(
+                                    color: AppColors.spaceIndigo)),
+                            Text('MU campus delivery',
+                                style: AppTextStyles.micro(
+                                    color: AppColors.lavenderGrey)),
                           ],
                         ),
                       ],
@@ -181,7 +201,41 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const SizedBox(height: 36),
 
-                    // Heading
+                    // Tab switcher: Sign in / Sign up
+                    Container(
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: const Border.fromBorderSide(
+                          BorderSide(color: Color(0xFFE8EAF0)),
+                        ),
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        labelStyle: AppTextStyles.bodySmSemibold(
+                            color: Colors.white),
+                        unselectedLabelStyle: AppTextStyles.bodySm(
+                            color: AppColors.lavenderGrey),
+                        labelColor: Colors.white,
+                        unselectedLabelColor: AppColors.lavenderGrey,
+                        indicator: BoxDecoration(
+                          color: AppColors.punchRed,
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        padding: const EdgeInsets.all(4),
+                        tabs: const [
+                          Tab(text: 'Sign in'),
+                          Tab(text: 'Sign up'),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // Heading changes with tab
                     Text(
                       _isSignUp ? 'Create account' : 'Welcome back',
                       style: AppTextStyles.h1(color: AppColors.spaceIndigo),
@@ -189,14 +243,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 4),
                     Text(
                       _isSignUp
-                          ? 'Use your university email to get started'
+                          ? 'Enter your university email — we\'ll send you a one-time code'
                           : 'Sign in to your university account',
                       style: AppTextStyles.body(color: AppColors.lavenderGrey),
                     ),
 
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 24),
 
-                    // Email field
+                    // Email field (always shown)
                     TextField(
                       controller: _emailCtrl,
                       keyboardType: TextInputType.emailAddress,
@@ -206,48 +260,27 @@ class _LoginScreenState extends State<LoginScreen> {
                         hint: 'rollnumber@mahindrauniversity.edu.in',
                       ),
                     ),
-                    const SizedBox(height: 12),
 
-                    // Password field
-                    TextField(
-                      controller: _passwordCtrl,
-                      obscureText: !_showPassword,
-                      style: AppTextStyles.body(color: AppColors.spaceIndigo),
-                      decoration: _field(
-                        hint: 'Password',
-                        suffix: IconButton(
-                          icon: Icon(
-                            _showPassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            color: AppColors.lavenderGrey,
-                            size: 20,
-                          ),
-                          onPressed: () =>
-                              setState(() => _showPassword = !_showPassword),
-                        ),
-                      ),
-                    ),
-
-                    // Confirm password (sign-up only)
-                    if (_isSignUp) ...[
+                    // Password field — sign in only
+                    if (!_isSignUp) ...[
                       const SizedBox(height: 12),
                       TextField(
-                        controller: _confirmCtrl,
-                        obscureText: !_showConfirm,
-                        style: AppTextStyles.body(color: AppColors.spaceIndigo),
+                        controller: _passwordCtrl,
+                        obscureText: !_showPassword,
+                        style:
+                            AppTextStyles.body(color: AppColors.spaceIndigo),
                         decoration: _field(
-                          hint: 'Confirm password',
+                          hint: 'Password',
                           suffix: IconButton(
                             icon: Icon(
-                              _showConfirm
+                              _showPassword
                                   ? Icons.visibility_off_outlined
                                   : Icons.visibility_outlined,
                               color: AppColors.lavenderGrey,
                               size: 20,
                             ),
-                            onPressed: () =>
-                                setState(() => _showConfirm = !_showConfirm),
+                            onPressed: () => setState(
+                                () => _showPassword = !_showPassword),
                           ),
                         ),
                       ),
@@ -256,47 +289,32 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 24),
 
                     TomatoButton(
-                      label: _isSignUp ? 'Create account' : 'Sign in',
+                      label: _isSignUp ? 'Send code' : 'Sign in',
                       isFullWidth: true,
                       size: TomatoButtonSize.lg,
                       isLoading: _isLoading,
-                      onTap: _isLoading ? null : (_isSignUp ? _signUp : _signIn),
+                      onTap: _isLoading
+                          ? null
+                          : (_isSignUp ? _signUp : _signIn),
                     ),
 
-                    const SizedBox(height: 20),
-
-                    // Toggle row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          _isSignUp ? 'Already have an account?' : 'New here?',
-                          style: AppTextStyles.bodySm(
-                            color: AppColors.lavenderGrey,
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _isSignUp = !_isSignUp;
-                              _emailCtrl.clear();
-                              _passwordCtrl.clear();
-                              _confirmCtrl.clear();
-                            });
-                          },
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.punchRed,
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                          ),
-                          child: Text(
-                            _isSignUp ? 'Sign in' : 'Create account',
-                            style: AppTextStyles.bodySmSemibold(
-                              color: AppColors.punchRed,
+                    if (_isSignUp) ...[
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          const Icon(Icons.mail_outline_rounded,
+                              size: 16, color: AppColors.lavenderGrey),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'A 6-digit code will be sent to your MU email inbox',
+                              style: AppTextStyles.meta(
+                                  color: AppColors.lavenderGrey),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
