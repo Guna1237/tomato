@@ -34,6 +34,7 @@ android/app/src/main/res/drawable-*/
 android/app/src/main/res/mipmap-*/
 android/app/src/main/res/values/strings.xml
 android/key.properties
+android/app/*.jks
 android/local.properties
 android/.gradle/
 android/app/local.properties
@@ -88,3 +89,7 @@ macos/build/
 # Windows-specific
 windows/flutter/ephemeral/
 windows/build/
+
+.vercel
+.env*.local
+.superpowers/

@@ -61,7 +61,13 @@ class QuickActionsGrid extends StatelessWidget {
         // Become a runner (white)
         Expanded(
           child: GestureDetector(
-            onTap: () {},
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Runner sign-ups open soon'),
+                behavior: SnackBarBehavior.floating,
+                duration: Duration(seconds: 2),
+              ),
+            ),
             child: Container(
               height: 80,
               decoration: BoxDecoration(

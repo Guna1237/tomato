@@ -1,23 +1,65 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../core/services/face_detection_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/providers/auth_provider.dart';
+import '../../core/supabase/supabase_client.dart';
 import '../../shared/widgets/app_status_bar.dart';
 import '../../shared/widgets/section_header.dart';
 import '../../shared/widgets/tomato_card.dart';
-import '../../data/mock/mock_user.dart';
+import '../../data/models/profile.dart';
 import 'widgets/reliability_ring.dart';
 import 'widgets/badge_grid.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  bool _togglingRunner = false;
+
+  Future<void> _toggleRunnerActive(Profile user, bool newValue) async {
+    setState(() => _togglingRunner = true);
+    try {
+      await supabase
+          .from('profiles')
+          .update({'runner_active': newValue})
+          .eq('id', user.id);
+      ref.invalidate(currentUserProvider);
+    } finally {
+      if (mounted) setState(() => _togglingRunner = false);
+    }
+  }
+
+  Future<void> _becomeRunner(Profile user) async {
+    setState(() => _togglingRunner = true);
+    try {
+      await supabase
+          .from('profiles')
+          .update({'is_runner': true, 'runner_active': true})
+          .eq('id', user.id);
+      ref.invalidate(currentUserProvider);
+    } finally {
+      if (mounted) setState(() => _togglingRunner = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? AppColors.darkCanvas : AppColors.bgCanvas;
     final fg1 = isDark ? AppColors.platinum : AppColors.spaceIndigo;
-    const user = mockCurrentUser;
+
+    final userAsync = ref.watch(currentUserProvider);
 
     return Scaffold(
       backgroundColor: bg,
@@ -48,136 +90,470 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-              children: [
-                // Profile header card
-                TomatoCard(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Stack(
-                            children: [
-                              Container(
-                                width: 72, height: 72,
-                                decoration: const BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [Color(0xFFFFC4B0), Color(0xFFFF8A97)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    user.initials,
-                                    style: AppTextStyles.h2(color: Colors.white),
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                bottom: 0, right: 0,
-                                child: Container(
-                                  width: 22, height: 22,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.leaf500,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.check, color: Colors.white, size: 13),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Flexible(
-                                      child: Text(user.name, style: AppTextStyles.h3(color: fg1)),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    const Icon(Icons.verified_rounded, color: AppColors.punchRed, size: 16),
-                                  ],
-                                ),
-                                const SizedBox(height: 2),
-                                Text(user.rollNumber, style: AppTextStyles.meta(color: AppColors.lavenderGrey)),
-                                Text(user.hostel, style: AppTextStyles.meta(color: AppColors.lavenderGrey)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Divider(color: isDark ? const Color(0x12EDF2F4) : const Color(0x0A2B2D42)),
-                      const SizedBox(height: 16),
-
-                      // Stats row
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _Stat(value: '${user.totalDeliveries}', label: 'Deliveries'),
-                          _Stat(value: '${user.totalRequests}', label: 'Requests'),
-                          _Stat(value: '${user.streakDays}d', label: 'Streak'),
-                          _Stat(value: '₹${user.credits}', label: 'Credits'),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                const SectionHeader(title: 'Reliability'),
-                const SizedBox(height: 16),
-                Center(child: ReliabilityRing(reliability: user.reliability)),
-                const SizedBox(height: 24),
-
-                const SectionHeader(title: 'Badges'),
-                const SizedBox(height: 12),
-                const BadgeGrid(),
-                const SizedBox(height: 24),
-
-                const SectionHeader(title: 'Recent reviews'),
-                const SizedBox(height: 12),
-                ...[
-                  ('Aryan Singh', 'Fast and reliable! Got my parcel in under 8 min.', 5),
-                  ('Priya Mehta', 'Super helpful. Would definitely request again.', 5),
-                ].map((r) {
-                  final (name, quote, stars) = r;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: TomatoCard(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(name, style: AppTextStyles.bodySmSemibold(color: fg1)),
-                              const Spacer(),
-                              Row(
-                                children: List.generate(stars, (_) {
-                                  return const Icon(Icons.star_rounded, color: AppColors.ember500, size: 14);
-                                }),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(quote, style: AppTextStyles.meta(color: AppColors.lavenderGrey)),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-              ],
+            child: userAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text('Error: $e')),
+              data: (user) {
+                if (user == null) {
+                  return const Center(child: Text('Not signed in'));
+                }
+                return _ProfileBody(
+                  user: user,
+                  isDark: isDark,
+                  fg1: fg1,
+                  togglingRunner: _togglingRunner,
+                  onToggleRunnerActive: (val) => _toggleRunnerActive(user, val),
+                  onBecomeRunner: () => _becomeRunner(user),
+                );
+              },
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ProfileBody extends ConsumerStatefulWidget {
+  final Profile user;
+  final bool isDark;
+  final Color fg1;
+  final bool togglingRunner;
+  final ValueChanged<bool> onToggleRunnerActive;
+  final VoidCallback onBecomeRunner;
+
+  const _ProfileBody({
+    required this.user,
+    required this.isDark,
+    required this.fg1,
+    required this.togglingRunner,
+    required this.onToggleRunnerActive,
+    required this.onBecomeRunner,
+  });
+
+  @override
+  ConsumerState<_ProfileBody> createState() => _ProfileBodyState();
+}
+
+class _ProfileBodyState extends ConsumerState<_ProfileBody> {
+  bool _editingName = false;
+  bool _savingName = false;
+  bool _uploadingPhoto = false;
+  late TextEditingController _nameController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.user.displayName);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveName() async {
+    final newName = _nameController.text.trim();
+    if (newName.isEmpty || newName == widget.user.displayName) {
+      setState(() => _editingName = false);
+      return;
+    }
+    setState(() => _savingName = true);
+    try {
+      await supabase
+          .from('profiles')
+          .update({'display_name': newName})
+          .eq('id', widget.user.id);
+      ref.invalidate(currentUserProvider);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _savingName = false;
+          _editingName = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _pickAndUploadPhoto() async {
+    if (_uploadingPhoto) return;
+    final picker = ImagePicker();
+    XFile? picked;
+    try {
+      picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 512,
+      );
+    } catch (_) {
+      return;
+    }
+    if (picked == null) return;
+
+    setState(() => _uploadingPhoto = true);
+    try {
+      final bytes = await picked.readAsBytes();
+      final photoBase64 = base64Encode(bytes);
+
+      double faceConfidence = 0.0;
+      if (!kIsWeb) {
+        try {
+          faceConfidence = await detectFaceConfidence(picked.path);
+        } catch (_) {
+          faceConfidence = 0.0;
+        }
+      }
+
+      await supabase.functions.invoke('validate-identity', body: {
+        'photo_base64': photoBase64,
+        'display_name': widget.user.displayName,
+        'roll_number': widget.user.rollNumber ?? '',
+        'face_confidence': faceConfidence,
+      });
+
+      ref.invalidate(currentUserProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Photo updated. It will be reviewed shortly.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = widget.user;
+    final isDark = widget.isDark;
+    final fg1 = widget.fg1;
+
+    final initial = user.displayName.isNotEmpty
+        ? user.displayName.substring(0, 1).toUpperCase()
+        : '?';
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+      children: [
+        // Profile header card
+        TomatoCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  // Tappable avatar
+                  GestureDetector(
+                    onTap: _uploadingPhoto ? null : _pickAndUploadPhoto,
+                    child: Stack(
+                      children: [
+                        Container(
+                          width: 72, height: 72,
+                          decoration: const BoxDecoration(
+                            color: AppColors.punchRed,
+                            shape: BoxShape.circle,
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: _uploadingPhoto
+                              ? const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : user.photoUrl != null
+                                  ? CachedNetworkImage(
+                                      imageUrl: user.photoUrl!,
+                                      fit: BoxFit.cover,
+                                      errorWidget: (_, __, ___) => Center(
+                                        child: Text(
+                                          initial,
+                                          style: AppTextStyles.h2(color: Colors.white),
+                                        ),
+                                      ),
+                                    )
+                                  : Center(
+                                      child: Text(
+                                        initial,
+                                        style: AppTextStyles.h2(color: Colors.white),
+                                      ),
+                                    ),
+                        ),
+                        if (!_uploadingPhoto)
+                          Positioned(
+                            bottom: 0, right: 0,
+                            child: Container(
+                              width: 22, height: 22,
+                              decoration: BoxDecoration(
+                                color: isDark ? AppColors.darkElevated : Colors.white,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isDark ? const Color(0x22EDF2F4) : const Color(0x14000000),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.camera_alt_outlined,
+                                size: 12,
+                                color: isDark ? AppColors.platinum : AppColors.spaceIndigo,
+                              ),
+                            ),
+                          ),
+                        if (user.faceStatus == 'approved')
+                          Positioned(
+                            bottom: 0, right: 0,
+                            child: Container(
+                              width: 22, height: 22,
+                              decoration: const BoxDecoration(
+                                color: AppColors.leaf500,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.check, color: Colors.white, size: 13),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: _editingName
+                                  ? TextField(
+                                      controller: _nameController,
+                                      autofocus: true,
+                                      style: AppTextStyles.h3(color: fg1),
+                                      decoration: InputDecoration(
+                                        isDense: true,
+                                        contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                          borderSide: BorderSide(
+                                            color: AppColors.punchRed.withValues(alpha: 0.6),
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                          borderSide: const BorderSide(
+                                            color: AppColors.punchRed,
+                                          ),
+                                        ),
+                                      ),
+                                      onSubmitted: (_) => _saveName(),
+                                    )
+                                  : Text(user.displayName, style: AppTextStyles.h3(color: fg1)),
+                            ),
+                            if (user.faceStatus == 'approved' && !_editingName) ...[
+                              const SizedBox(width: 6),
+                              const Icon(Icons.verified_rounded, color: AppColors.punchRed, size: 16),
+                            ],
+                            const SizedBox(width: 4),
+                            _savingName
+                                ? const SizedBox(
+                                    width: 18, height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : GestureDetector(
+                                    onTap: _editingName ? _saveName : () {
+                                      setState(() => _editingName = true);
+                                    },
+                                    child: Icon(
+                                      _editingName
+                                          ? Icons.check_circle_outline_rounded
+                                          : Icons.edit_outlined,
+                                      size: 18,
+                                      color: AppColors.lavenderGrey,
+                                    ),
+                                  ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        if (user.rollNumber != null)
+                          Text(user.rollNumber!, style: AppTextStyles.meta(color: AppColors.lavenderGrey)),
+                        Text(user.email, style: AppTextStyles.meta(color: AppColors.lavenderGrey)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Divider(color: isDark ? const Color(0x12EDF2F4) : const Color(0x0A2B2D42)),
+              const SizedBox(height: 16),
+
+              // Stats row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _Stat(value: '${user.streakDays}d', label: 'Streak'),
+                  _Stat(value: 'T${user.tomatoCredits}', label: 'Tomatos'),
+                  _Stat(value: '${(user.reliability * 100).toInt()}%', label: 'Reliability'),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // Face verification banner
+        if (user.faceStatus == 'flagged')
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF3CD),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFFB800)),
+            ),
+            child: const Row(children: [
+              Icon(Icons.access_time_rounded, color: Color(0xFFB37A00), size: 18),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Identity verification pending - admin will review your photo shortly',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF7A5200)),
+                ),
+              ),
+            ]),
+          ),
+
+        if (user.faceStatus == 'rejected')
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFEDED),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFEF233C)),
+            ),
+            child: const Row(children: [
+              Icon(Icons.error_outline_rounded, color: Color(0xFFEF233C), size: 18),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Please re-upload your profile photo for identity verification',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF9B0000)),
+                ),
+              ),
+            ]),
+          ),
+
+        const SizedBox(height: 24),
+
+        // Runner mode section
+        TomatoCard(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: user.isRunner
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40, height: 40,
+                        decoration: BoxDecoration(
+                          color: AppColors.punchRed.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(Icons.directions_run_rounded, color: AppColors.punchRed, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Available as runner', style: AppTextStyles.bodySmSemibold(color: fg1)),
+                            Text('Accept delivery requests from campus', style: AppTextStyles.micro(color: AppColors.lavenderGrey)),
+                          ],
+                        ),
+                      ),
+                      widget.togglingRunner
+                          ? const SizedBox(
+                              width: 24, height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Switch(
+                              value: user.runnerActive,
+                              onChanged: widget.onToggleRunnerActive,
+                              activeThumbColor: AppColors.punchRed,
+                            ),
+                    ],
+                  ),
+                )
+              : Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40, height: 40,
+                        decoration: BoxDecoration(
+                          color: AppColors.lavenderGrey.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(Icons.directions_run_rounded, color: AppColors.lavenderGrey, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Become a runner', style: AppTextStyles.bodySmSemibold(color: fg1)),
+                            Text('Earn tomatos by running deliveries', style: AppTextStyles.micro(color: AppColors.lavenderGrey)),
+                          ],
+                        ),
+                      ),
+                      widget.togglingRunner
+                          ? const SizedBox(
+                              width: 24, height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : GestureDetector(
+                              onTap: widget.onBecomeRunner,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                                decoration: BoxDecoration(
+                                  color: AppColors.punchRed,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Text('Join', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                              ),
+                            ),
+                    ],
+                  ),
+                ),
+        ),
+
+        const SizedBox(height: 24),
+
+        const SectionHeader(title: 'Reliability'),
+        const SizedBox(height: 16),
+        Center(child: ReliabilityRing(reliability: user.reliability)),
+        const SizedBox(height: 24),
+
+        const SectionHeader(title: 'Badges'),
+        const SizedBox(height: 12),
+        const BadgeGrid(),
+        const SizedBox(height: 24),
+
+        const SectionHeader(title: 'Reviews'),
+        const SizedBox(height: 12),
+        TomatoCard(
+          padding: const EdgeInsets.all(20),
+          child: Center(
+            child: Text(
+              'No reviews yet',
+              style: AppTextStyles.meta(color: AppColors.lavenderGrey),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

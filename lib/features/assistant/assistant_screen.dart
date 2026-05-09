@@ -3,7 +3,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../shared/widgets/app_status_bar.dart';
-import '../../shared/widgets/back_button_widget.dart';
 import '../../shared/widgets/tomato_card.dart';
 import '../../shared/widgets/tomato_button.dart';
 
@@ -27,37 +26,28 @@ class AssistantScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const BackButtonWidget(),
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Sparkle icon with gradient bg
-                      Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [brand, AppColors.ember500],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.auto_awesome_rounded,
-                          color: Colors.white,
-                          size: 14,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text('Tomato sense', style: AppTextStyles.h3(color: fg1)),
-                    ],
+                // Sparkle icon with gradient bg
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [brand, AppColors.ember500],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: Colors.white,
+                    size: 14,
                   ),
                 ),
-                // Spacer to balance back button
-                const SizedBox(width: 40),
+                const SizedBox(width: 8),
+                Text('Tomato sense', style: AppTextStyles.h3(color: fg1)),
               ],
             ),
           ),
@@ -181,7 +171,7 @@ class _AIResponseColumn extends StatelessWidget {
                 ],
               ),
               child: Text(
-                "Got it. I'll set up a pickup at the South Gate desk and aim for handoff to H4 around 6:10. Two helpers are already near the gate — Priya can be there in 4 minutes.",
+                "Got it. I'll set up a pickup at the South Gate desk and aim for handoff to H4 around 6:10. Two helpers are already near the gate, Priya can be there in 4 minutes.",
                 style: AppTextStyles.bodySm(color: fg1),
               ),
             ),
@@ -271,7 +261,7 @@ class _InfoGrid extends StatelessWidget {
       ('From', 'South Gate · parcel desk'),
       ('To', 'H4 · 412 (you)'),
       ('By', '6:10 PM'),
-      ('Cost', '~₹40'),
+      ('Cost', '~T40'),
     ];
 
     return Column(
@@ -350,7 +340,7 @@ class _InfoChip extends StatelessWidget {
           const SizedBox(width: 6),
           Flexible(
             child: Text(
-              'Gate is calm right now — under 2 min wait.',
+              'Gate is calm right now - under 2 min wait.',
               style: AppTextStyles.meta(color: AppColors.leaf600),
             ),
           ),

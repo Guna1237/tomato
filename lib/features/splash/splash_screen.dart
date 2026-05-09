@@ -13,17 +13,10 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _breatheCtrl;
-
+class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _breatheCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 4000),
-    )..repeat(reverse: true);
 
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) context.go('/onboarding');
@@ -32,7 +25,6 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
-    _breatheCtrl.dispose();
     super.dispose();
   }
 
@@ -42,67 +34,22 @@ class _SplashScreenState extends State<SplashScreen>
     return Scaffold(
       body: Stack(
         children: [
-          // Background gradient
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFFFFF1F3),
-                  Color(0xFFFFB5BF),
-                  AppColors.punchRed,
-                ],
-                stops: [0.0, 0.4, 1.0],
-              ),
-            ),
-          ),
-
-          // Breathing radial glow
-          AnimatedBuilder(
-            animation: _breatheCtrl,
-            builder: (_, __) {
-              final scale = 0.8 + _breatheCtrl.value * 0.4;
-              return Center(
-                child: Transform.scale(
-                  scale: scale,
-                  child: Container(
-                    width: size.width * 0.9,
-                    height: size.width * 0.9,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          Colors.white.withValues(alpha: 0.18),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
+          // Background
+          const Positioned.fill(child: ColoredBox(color: AppColors.punchRed)),
 
           // Floating particles
           ..._buildParticles(size),
 
           // Main content
-          SafeArea(
+          Center(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const Spacer(),
-
-                // Logo mark
                 const TomatoMark(size: 120)
                     .animate()
                     .fadeIn(duration: 600.ms, delay: 200.ms)
                     .scale(begin: const Offset(0.85, 0.85), end: const Offset(1, 1), duration: 600.ms, curve: Curves.easeOut),
-
                 const SizedBox(height: 20),
-
-                // App name
                 Text(
                   'tomato',
                   style: AppTextStyles.displayXL(color: Colors.white).copyWith(
@@ -113,28 +60,24 @@ class _SplashScreenState extends State<SplashScreen>
                     .animate()
                     .fadeIn(duration: 500.ms, delay: 400.ms)
                     .slideY(begin: 0.1, end: 0, duration: 500.ms, curve: Curves.easeOut),
-
                 const SizedBox(height: 12),
-
-                // Tagline
                 Text(
                   'somebody is already going that way',
                   style: AppTextStyles.body(color: Colors.white.withValues(alpha: 0.82)),
                 )
                     .animate()
                     .fadeIn(duration: 500.ms, delay: 600.ms),
-
-                const Spacer(),
-
-                // University label
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 32),
-                  child: Text(
-                    'MAHINDRA UNIVERSITY',
-                    style: AppTextStyles.micro(color: Colors.white.withValues(alpha: 0.65)),
-                  ),
-                ).animate().fadeIn(duration: 500.ms, delay: 800.ms),
               ],
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 48),
+              child: Text(
+                'MAHINDRA UNIVERSITY',
+                style: AppTextStyles.micro(color: Colors.white.withValues(alpha: 0.65)),
+              ).animate().fadeIn(duration: 500.ms, delay: 800.ms),
             ),
           ),
         ],
@@ -144,10 +87,10 @@ class _SplashScreenState extends State<SplashScreen>
 
   List<Widget> _buildParticles(Size size) {
     final rng = Random(42);
-    return List.generate(12, (i) {
+    return List.generate(8, (i) {
       final x = rng.nextDouble() * size.width;
       final y = rng.nextDouble() * size.height * 0.7 + size.height * 0.1;
-      final particleSize = 4.0 + rng.nextDouble() * 4;
+      final particleSize = 3.0 + rng.nextDouble() * 2;
       return Positioned(
         left: x,
         top: y,
@@ -155,7 +98,7 @@ class _SplashScreenState extends State<SplashScreen>
           width: particleSize,
           height: particleSize,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.4),
+            color: Colors.white.withValues(alpha: 0.3),
             shape: BoxShape.circle,
           ),
         )

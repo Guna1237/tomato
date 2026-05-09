@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/providers/admin_provider.dart';
 import '../../../shared/widgets/tomato_card.dart';
-import '../../../data/mock/mock_admin.dart';
 
 class AdminQueueItemWidget extends StatelessWidget {
-  final AdminQueueItem item;
+  final AdminQueueEntry item;
   const AdminQueueItemWidget({super.key, required this.item});
+
+  Color get _statusColor => item.isUrgent ? AppColors.ember500 : AppColors.lavenderGrey;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +24,7 @@ class AdminQueueItemWidget extends StatelessWidget {
             width: 8,
             height: 8,
             decoration: BoxDecoration(
-              color: item.statusColor,
+              color: _statusColor,
               shape: BoxShape.circle,
             ),
           ),
@@ -39,12 +41,12 @@ class AdminQueueItemWidget extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: item.statusColor.withValues(alpha: 0.1),
+              color: _statusColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(Sp.rpill),
             ),
             child: Text(
               item.status,
-              style: AppTextStyles.micro(color: item.statusColor),
+              style: AppTextStyles.micro(color: _statusColor),
             ),
           ),
           const SizedBox(width: 8),

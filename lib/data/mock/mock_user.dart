@@ -39,7 +39,7 @@ class UserProfile {
 const mockCurrentUser = UserProfile(
   name: 'Rahul Sharma',
   rollNumber: 'SE21UCSE001',
-  hostel: 'H4 — North Wing',
+  hostel: 'H4 - North Wing',
   email: 'ra2211003010487@mahindrauniversity.edu.in',
   credits: 340,
   streakDays: 9,

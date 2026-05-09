@@ -6,6 +6,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../shared/widgets/app_status_bar.dart';
 import '../../shared/widgets/back_button_widget.dart';
 import '../../shared/widgets/tomato_card.dart';
+import '../../core/supabase/supabase_client.dart';
 
 class OtpScreen extends StatefulWidget {
   const OtpScreen({super.key});
@@ -18,14 +19,23 @@ class _OtpScreenState extends State<OtpScreen> {
   final List<String> _digits = List.filled(6, '');
   int _secondsLeft = 42;
   Timer? _timer;
+  StreamSubscription<AuthState>? _authSub;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _startTimer();
+    // Catch session if user clicks the magic link in email instead of typing code
+    _authSub = supabase.auth.onAuthStateChange.listen((data) {
+      if (data.event == AuthChangeEvent.signedIn && mounted && !_isLoading) {
+        _handleSignedIn();
+      }
+    });
   }
 
   void _startTimer() {
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (_secondsLeft > 0) {
         setState(() => _secondsLeft--);
@@ -37,18 +47,75 @@ class _OtpScreenState extends State<OtpScreen> {
 
   @override
   void dispose() {
+    _authSub?.cancel();
     _timer?.cancel();
     super.dispose();
   }
 
+  Future<void> _handleSignedIn() async {
+    setState(() => _isLoading = true);
+    try {
+      final profile = await supabase
+          .from('profiles')
+          .select()
+          .eq('id', supabase.auth.currentUser!.id)
+          .maybeSingle();
+      if (mounted) {
+        if (profile == null) {
+          context.go('/profile-setup');
+        } else {
+          context.go('/home');
+        }
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   void _onDigit(String d) {
+    if (_isLoading) return;
     final idx = _digits.indexOf('');
     if (idx == -1) return;
     setState(() => _digits[idx] = d);
     if (idx == 5) {
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) context.go('/profile-setup');
-      });
+      Future.delayed(const Duration(milliseconds: 300), _verifyOtp);
+    }
+  }
+
+  Future<void> _verifyOtp() async {
+    final email = GoRouterState.of(context).uri.queryParameters['email'] ?? '';
+    final otpCode = _digits.join();
+    setState(() => _isLoading = true);
+    try {
+      await supabase.auth.verifyOTP(
+        email: email,
+        token: otpCode,
+        type: OtpType.email,
+      );
+      final profile = await supabase
+          .from('profiles')
+          .select()
+          .eq('id', supabase.auth.currentUser!.id)
+          .maybeSingle();
+      if (mounted) {
+        if (profile == null) {
+          context.go('/profile-setup');
+        } else {
+          context.go('/home');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+        setState(() {
+          for (int i = 0; i < _digits.length; i++) {
+            _digits[i] = '';
+          }
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -66,7 +133,8 @@ class _OtpScreenState extends State<OtpScreen> {
 
     return Scaffold(
       backgroundColor: bg,
-      body: Column(
+      body: Stack(children: [
+      Column(
         children: [
           AppStatusBar(dark: isDark),
           const Padding(
@@ -86,7 +154,7 @@ class _OtpScreenState extends State<OtpScreen> {
                   Text('Check your email', style: AppTextStyles.h1(color: fg1)),
                   const SizedBox(height: 8),
                   Text(
-                    'We sent a 6-digit code to\nya2211003010487@mahindrauniversity.edu.in',
+                    'We sent a 6-digit code to\n${GoRouterState.of(context).uri.queryParameters['email'] ?? ''}',
                     style: AppTextStyles.body(color: AppColors.lavenderGrey),
                   ),
                   const SizedBox(height: 32),
@@ -133,10 +201,22 @@ class _OtpScreenState extends State<OtpScreen> {
                       if (_secondsLeft == 0) ...[
                         const SizedBox(width: 4),
                         GestureDetector(
-                          onTap: () => setState(() {
-                            _secondsLeft = 42;
-                            _startTimer();
-                          }),
+                          onTap: () async {
+                            final email = GoRouterState.of(context).uri.queryParameters['email'] ?? '';
+                            final messenger = ScaffoldMessenger.of(context);
+                            try {
+                              await supabase.auth.signInWithOtp(email: email, shouldCreateUser: false);
+                              setState(() => _secondsLeft = 42);
+                              _startTimer();
+                            } catch (e) {
+                              final msg = e.toString().contains('429') || e.toString().toLowerCase().contains('rate')
+                                  ? 'Too many requests - wait a minute before resending'
+                                  : e.toString();
+                              messenger.showSnackBar(SnackBar(content: Text(msg)));
+                              setState(() => _secondsLeft = 60);
+                              _startTimer();
+                            }
+                          },
                           child: Text(
                             'Resend',
                             style: AppTextStyles.metaSemibold(color: brand),
@@ -156,7 +236,7 @@ class _OtpScreenState extends State<OtpScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Verified email = trusted handoffs. No anonymous access.',
+                            'Only Mahindra University emails are allowed.',
                             style: AppTextStyles.meta(color: AppColors.lavenderGrey),
                           ),
                         ),
@@ -223,6 +303,12 @@ class _OtpScreenState extends State<OtpScreen> {
           const SizedBox(height: 8),
         ],
       ),
+      if (_isLoading)
+        const ColoredBox(
+          color: Color(0x66000000),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ]),
     );
   }
 }

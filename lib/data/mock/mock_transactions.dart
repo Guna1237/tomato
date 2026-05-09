@@ -24,7 +24,7 @@ class Transaction {
   });
 
   bool get isEarning => type == TransactionType.earned;
-  String get displayAmount => isEarning ? '+₹$amount' : '-₹$amount';
+  String get displayAmount => isEarning ? '+T$amount' : '-T$amount';
 }
 
 final mockTransactions = [
@@ -59,7 +59,7 @@ final mockTransactions = [
   const Transaction(
     id: 't4',
     title: 'Emergency pickup',
-    subtitle: 'Urgent · +bonus credits',
+    subtitle: 'Urgent · +bonus tomatos',
     amount: 60,
     type: TransactionType.earned,
     date: 'Mon, 9:42 AM',

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../providers/auth_provider.dart';
 import '../../features/splash/splash_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/auth/login_screen.dart';
-import '../../features/auth/otp_screen.dart';
 import '../../features/auth/profile_setup_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/wallet/wallet_screen.dart';
@@ -16,6 +18,7 @@ import '../../features/tracking/tracking_screen.dart';
 import '../../features/emergency/emergency_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/admin/admin_screen.dart';
+import '../../features/runner/runner_screen.dart';
 import '../../shared/widgets/app_tab_bar.dart';
 
 Widget _slideUp(
@@ -51,6 +54,14 @@ Widget _slideRight(
 
 final appRouter = GoRouter(
   initialLocation: '/splash',
+  redirect: (context, state) {
+    final session = Supabase.instance.client.auth.currentSession;
+    final isPublic = ['/splash', '/onboarding', '/login', '/profile-setup']
+        .any((r) => state.matchedLocation.startsWith(r));
+    if (session == null && !isPublic) return '/login';
+    if (session != null && (state.matchedLocation == '/login' || state.matchedLocation == '/onboarding')) return '/home';
+    return null;
+  },
   routes: [
     GoRoute(
       path: '/splash',
@@ -69,14 +80,6 @@ final appRouter = GoRouter(
       pageBuilder: (_, state) => CustomTransitionPage(
         key: state.pageKey,
         child: const LoginScreen(),
-        transitionsBuilder: _slideRight,
-      ),
-    ),
-    GoRoute(
-      path: '/otp',
-      pageBuilder: (_, state) => CustomTransitionPage(
-        key: state.pageKey,
-        child: const OtpScreen(),
         transitionsBuilder: _slideRight,
       ),
     ),
@@ -171,15 +174,31 @@ final appRouter = GoRouter(
         transitionsBuilder: _slideRight,
       ),
     ),
+    GoRoute(
+      path: '/runner',
+      pageBuilder: (_, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const RunnerScreen(),
+        transitionsBuilder: _slideRight,
+      ),
+    ),
   ],
 );
 
-class _MainShell extends StatelessWidget {
+class _MainShell extends ConsumerWidget {
   final Widget child;
   const _MainShell({required this.child});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(currentUserProvider).whenData((profile) {
+      if (profile == null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) context.go('/profile-setup');
+        });
+      }
+    });
+
     return Scaffold(
       body: Stack(
         children: [

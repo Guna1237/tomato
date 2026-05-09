@@ -16,7 +16,7 @@ class BackButtonWidget extends StatelessWidget {
         (isDark ? const Color(0x33EDF2F4) : const Color(0xFFFFFFFF));
 
     return GestureDetector(
-      onTap: () => context.pop(),
+      onTap: () => context.canPop() ? context.pop() : context.go('/login'),
       child: Container(
         width: 40, height: 40,
         decoration: BoxDecoration(

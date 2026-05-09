@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/tomato_card.dart';
-import '../../../shared/widgets/map_background.dart';
+
+// Mahindra University, Survey No 62/1A, Bahadurpally, Jeedimetla, Hyderabad
+const _campusCenter = LatLng(17.5427, 78.3869);
 
 class CampusMapCard extends StatelessWidget {
   const CampusMapCard({super.key});
@@ -32,7 +36,7 @@ class CampusMapCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(Sp.rpill),
                   ),
                   child: Text(
-                    '4 active',
+                    'Live',
                     style: AppTextStyles.micro(color: AppColors.punchRed),
                   ),
                 ),
@@ -43,10 +47,36 @@ class CampusMapCard extends StatelessWidget {
           SizedBox(
             height: 150,
             child: ClipRRect(
+              borderRadius: BorderRadius.zero,
               child: Stack(
                 children: [
-                  const MapBackground(height: 150),
-                  // Pulsing runner dots
+                  FlutterMap(
+                    options: const MapOptions(
+                      initialCenter: _campusCenter,
+                      initialZoom: 16,
+                      interactionOptions: InteractionOptions(
+                        flags: InteractiveFlag.none,
+                      ),
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'edu.mahindrauniversity.tomato',
+                      ),
+                      const MarkerLayer(
+                        markers: [
+                          Marker(
+                            point: _campusCenter,
+                            width: 28,
+                            height: 28,
+                            child: _RedPin(),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  // Pulsing runner dots — use Align, not Positioned+LayoutBuilder
                   ...[
                     (0.25, 0.40, AppColors.punchRed),
                     (0.55, 0.25, AppColors.ember500),
@@ -54,13 +84,10 @@ class CampusMapCard extends StatelessWidget {
                     (0.40, 0.70, AppColors.lavenderGrey),
                   ].map((d) {
                     final (fx, fy, color) = d;
-                    return LayoutBuilder(builder: (ctx, constraints) {
-                      return Positioned(
-                        left: constraints.maxWidth * fx,
-                        top: 150 * fy,
-                        child: _PulsingDot(color: color),
-                      );
-                    });
+                    return Align(
+                      alignment: Alignment(fx * 2 - 1, fy * 2 - 1),
+                      child: _PulsingDot(color: color),
+                    );
                   }),
                 ],
               ),
@@ -74,7 +101,7 @@ class CampusMapCard extends StatelessWidget {
                 const Icon(Icons.bolt_rounded, color: AppColors.punchRed, size: 14),
                 const SizedBox(width: 4),
                 Text(
-                  'Priya is 300m from the main gate',
+                  'Runners active near campus',
                   style: AppTextStyles.meta(color: AppColors.lavenderGrey),
                 ),
               ],
@@ -82,6 +109,19 @@ class CampusMapCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _RedPin extends StatelessWidget {
+  const _RedPin();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Icon(
+      Icons.location_pin,
+      color: AppColors.punchRed,
+      size: 28,
     );
   }
 }

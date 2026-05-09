@@ -39,13 +39,14 @@ class TomatoMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(size * 0.18),
+    return SizedBox(
+      width: size,
+      height: size,
       child: Image.asset(
-        'assets/images/tomato-logo.jpeg',
+        'assets/images/tomato-logo.png',
         width: size,
         height: size,
-        fit: BoxFit.cover,
+        fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => Container(
           width: size,
           height: size,

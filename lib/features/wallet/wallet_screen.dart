@@ -1,24 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/providers/auth_provider.dart';
+import '../../core/providers/transactions_provider.dart';
 import '../../shared/widgets/app_status_bar.dart';
 import '../../shared/widgets/section_header.dart';
 import '../../shared/widgets/tomato_card.dart';
 import '../../shared/widgets/tomato_logo.dart';
-import '../../data/mock/mock_transactions.dart';
-import '../../data/mock/mock_user.dart';
 import 'widgets/wallet_stats_row.dart';
 import 'widgets/transaction_list_item.dart';
 
-class WalletScreen extends StatelessWidget {
+class WalletScreen extends ConsumerWidget {
   const WalletScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? AppColors.darkCanvas : AppColors.bgCanvas;
     final fg1 = isDark ? AppColors.platinum : AppColors.spaceIndigo;
+
+    final userAsync = ref.watch(currentUserProvider);
+    final credits = userAsync.value?.tomatoCredits ?? 0;
+    final streak = userAsync.value?.streakDays ?? 0;
+    final txAsync = ref.watch(transactionsProvider);
 
     return Scaffold(
       backgroundColor: bg,
@@ -53,96 +59,57 @@ class WalletScreen extends StatelessWidget {
                 Container(
                   height: 240,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [AppColors.punchRed, AppColors.ember500],
-                      stops: [0.0, 1.0],
-                    ),
+                    color: isDark ? AppColors.darkElevated : AppColors.punchRed,
                     borderRadius: BorderRadius.circular(Sp.rxl),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.punchRed.withValues(alpha: 0.35),
-                        blurRadius: 24,
-                        offset: const Offset(0, 10),
+                        color: AppColors.punchRed.withValues(alpha: isDark ? 0.12 : 0.3),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
-                  child: Stack(
-                    children: [
-                      // Glows
-                      Positioned(
-                        top: -20, right: -20,
-                        child: Container(
-                          width: 150, height: 150,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: RadialGradient(
-                              colors: [Colors.white.withValues(alpha: 0.18), Colors.transparent],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: -30, left: 10,
-                        child: Container(
-                          width: 120, height: 120,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: RadialGradient(
-                              colors: [Colors.white.withValues(alpha: 0.1), Colors.transparent],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(22),
-                        child: Column(
+                  child: Padding(
+                    padding: const EdgeInsets.all(22),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Available credit',
-                                        style: AppTextStyles.micro(color: Colors.white.withValues(alpha: 0.75)),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        '₹${mockCurrentUser.credits}',
-                                        style: AppTextStyles.numericLarge(color: Colors.white),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        '+₹40 today · ${mockCurrentUser.streakDays}-day streak 🔥',
-                                        style: AppTextStyles.meta(color: Colors.white.withValues(alpha: 0.8)),
-                                      ),
-                                    ],
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Tomato balance',
+                                    style: AppTextStyles.micro(color: Colors.white.withValues(alpha: 0.75)),
                                   ),
-                                ),
-                                const TomatoMark(size: 56),
-                              ],
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'T$credits',
+                                    style: AppTextStyles.numericLarge(color: Colors.white),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '$streak-day streak',
+                                    style: AppTextStyles.meta(color: Colors.white.withValues(alpha: 0.8)),
+                                  ),
+                                ],
+                              ),
                             ),
-                            const SizedBox(height: 20),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _HeroBtn(label: 'Earn faster', onPressed: () {}),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _HeroBtn(label: 'Send', solid: true, onPressed: () {}),
-                                ),
-                              ],
-                            ),
+                            const TomatoMark(size: 56),
                           ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 20),
+                        _HeroBtn(
+                          label: 'Earn faster',
+                          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Complete deliveries to earn tomatos'), behavior: SnackBarBehavior.floating, duration: Duration(seconds: 2)),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -154,13 +121,26 @@ class WalletScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 TomatoCard(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: Column(
-                    children: List.generate(mockTransactions.length, (i) {
-                      return TransactionListItem(
-                        transaction: mockTransactions[i],
-                        showDivider: i < mockTransactions.length - 1,
-                      );
-                    }),
+                  child: txAsync.when(
+                    data: (transactions) => transactions.isEmpty
+                        ? const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Text('No transactions yet'),
+                          )
+                        : Column(
+                            children: List.generate(
+                              transactions.length,
+                              (i) => TransactionListItem(
+                                transaction: transactions[i],
+                                showDivider: i < transactions.length - 1,
+                              ),
+                            ),
+                          ),
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text('Error: $e'),
+                    ),
                   ),
                 ),
               ],
@@ -174,9 +154,8 @@ class WalletScreen extends StatelessWidget {
 
 class _HeroBtn extends StatelessWidget {
   final String label;
-  final bool solid;
   final VoidCallback onPressed;
-  const _HeroBtn({required this.label, this.solid = false, required this.onPressed});
+  const _HeroBtn({required this.label, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -185,17 +164,17 @@ class _HeroBtn extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: solid ? Colors.white.withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.2),
+          color: Colors.white.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(14),
         ),
         alignment: Alignment.center,
         child: Text(
           label,
-          style: TextStyle(
+          style: const TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w600,
             fontSize: 14,
-            color: solid ? AppColors.punchRed : Colors.white,
+            color: Colors.white,
           ),
         ),
       ),

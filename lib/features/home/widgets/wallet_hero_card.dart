@@ -16,158 +16,111 @@ class WalletHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? AppColors.darkElevated : AppColors.punchRed;
+
     return Container(
       height: 200,
       decoration: BoxDecoration(
+        color: bg,
         borderRadius: BorderRadius.circular(Sp.rxl),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1E2035),
-            Color(0xFF2B2D42),
-          ],
-        ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.spaceIndigo.withValues(alpha: 0.4),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
+            color: AppColors.punchRed.withValues(alpha: isDark ? 0.15 : 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: Stack(
-        children: [
-          // Ember radial glow
-          Positioned(
-            top: -30,
-            right: -20,
-            child: Container(
-              width: 180,
-              height: 180,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    AppColors.ember500.withValues(alpha: 0.18),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            )
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .scaleXY(begin: 1.0, end: 1.15, duration: 5.seconds, curve: Curves.easeInOut),
-          ),
-
-          // Bottom glow
-          Positioned(
-            bottom: -20,
-            left: 20,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    AppColors.punchRed.withValues(alpha: 0.1),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.all(22),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'TOMATO CREDITS',
-                      style: AppTextStyles.micro(color: Colors.white.withValues(alpha: 0.5)),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(Sp.rpill),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 6, height: 6,
-                            decoration: const BoxDecoration(
-                              color: AppColors.leaf500,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            'Active',
-                            style: AppTextStyles.micro(color: Colors.white.withValues(alpha: 0.7)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Credit amount
                 Text(
-                  '₹$credits',
-                  style: AppTextStyles.numericLarge(color: Colors.white),
+                  'TOMATO BALANCE',
+                  style: AppTextStyles.micro(color: Colors.white.withValues(alpha: 0.6)),
                 ),
-
-                const Spacer(),
-
-                // Streak + actions row
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '$streakDays-day streak',
-                            style: AppTextStyles.meta(
-                              color: Colors.white.withValues(alpha: 0.6),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: List.generate(streakDays, (i) {
-                              return Container(
-                                width: 6,
-                                height: 6,
-                                margin: const EdgeInsets.only(right: 3),
-                                decoration: BoxDecoration(
-                                  color: AppColors.ember500,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              );
-                            }),
-                          ),
-                        ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(Sp.rpill),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 6, height: 6,
+                        decoration: const BoxDecoration(
+                          color: AppColors.leaf500,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                    const Row(
-                      children: [
-                        _ActionPill(label: 'Earn', icon: Icons.add),
-                        SizedBox(width: 8),
-                        _ActionPill(label: 'Send', icon: Icons.arrow_outward),
-                      ],
-                    ),
-                  ],
+                      const SizedBox(width: 5),
+                      Text(
+                        'Active',
+                        style: AppTextStyles.micro(color: Colors.white.withValues(alpha: 0.7)),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+
+            // Credit amount
+            Text(
+              'T$credits',
+              style: AppTextStyles.numericLarge(color: Colors.white),
+            )
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .scaleXY(begin: 1.0, end: 1.02, duration: 5.seconds, curve: Curves.easeInOut),
+
+            const Spacer(),
+
+            // Streak + actions row
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$streakDays-day streak',
+                        style: AppTextStyles.meta(
+                          color: Colors.white.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: List.generate(streakDays.clamp(0, 7), (i) {
+                          return Container(
+                            width: 6,
+                            height: 6,
+                            margin: const EdgeInsets.only(right: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          );
+                        }),
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Run a delivery to earn tomatos'), behavior: SnackBarBehavior.floating, duration: Duration(seconds: 2)),
+                  ),
+                  child: const _ActionPill(label: 'Earn', icon: Icons.add),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -184,7 +137,7 @@ class _ActionPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
+        color: Colors.white.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(

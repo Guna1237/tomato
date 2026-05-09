@@ -94,4 +94,4 @@ final mockAdminQueue = [
 ];
 
 const mockAiSummary =
-    'Strong evening — 412 deliveries, 0 disputes, average handoff dropped 1.2 min. South gate spiked 6:30–7 PM; H4 was the busiest destination.';
+    'Strong evening: 412 deliveries, 0 disputes, average handoff down 1.2 min. South gate spiked 6:30-7 PM. H4 was the busiest destination.';

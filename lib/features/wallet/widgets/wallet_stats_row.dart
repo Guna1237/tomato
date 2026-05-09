@@ -1,20 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/providers/transactions_provider.dart';
+import '../../../data/models/credit_transaction.dart';
 import '../../../shared/widgets/tomato_card.dart';
 
-class WalletStatsRow extends StatelessWidget {
+class WalletStatsRow extends ConsumerWidget {
   const WalletStatsRow({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const Row(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final txAsync = ref.watch(transactionsProvider);
+
+    final (earned, spent, helped) = txAsync.maybeWhen(
+      data: (txs) {
+        int e = 0;
+        int s = 0;
+        int h = 0;
+        for (final t in txs) {
+          if (t.type == TransactionType.spend) {
+            s += t.amount;
+          } else {
+            e += t.amount;
+            if (t.type == TransactionType.earn) h++;
+          }
+        }
+        return (e, s, h);
+      },
+      orElse: () => (0, 0, 0),
+    );
+
+    return Row(
       children: [
-        _StatCard(label: 'Earned', value: '₹520', color: AppColors.leaf500),
-        SizedBox(width: 10),
-        _StatCard(label: 'Spent', value: '₹180', color: AppColors.punchRed),
-        SizedBox(width: 10),
-        _StatCard(label: 'Helped', value: '47', color: AppColors.ember500),
+        _StatCard(label: 'Earned', value: 'T$earned', color: AppColors.leaf500),
+        const SizedBox(width: 10),
+        _StatCard(label: 'Spent', value: 'T$spent', color: AppColors.punchRed),
+        const SizedBox(width: 10),
+        _StatCard(label: 'Helped', value: '$helped', color: AppColors.ember500),
       ],
     );
   }

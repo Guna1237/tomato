@@ -118,12 +118,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.punchRed.withValues(alpha: 0.08),
-                        AppColors.ember500.withValues(alpha: 0.06),
-                      ],
-                    ),
+                    color: AppColors.punchRed.withValues(alpha: 0.07),
                     borderRadius: BorderRadius.circular(Sp.rxl),
                     border: Border.all(color: AppColors.punchRed.withValues(alpha: 0.2)),
                   ),
@@ -142,7 +137,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Bonus reward: ₹60 credits', style: AppTextStyles.bodySmSemibold(color: fg1)),
+                            Text('Bonus reward: 60 tomatos', style: AppTextStyles.bodySmSemibold(color: fg1)),
                             Text('Urgent pickup incentive', style: AppTextStyles.meta(color: AppColors.lavenderGrey)),
                           ],
                         ),
@@ -226,7 +221,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
 
                 const SizedBox(height: 20),
                 TomatoButton(
-                  label: 'Accept ${mockRunners[_selectedRunner].name.split(' ').first} · ₹60',
+                  label: 'Accept ${mockRunners[_selectedRunner].name.split(' ').first} · T60',
                   isFullWidth: true,
                   size: TomatoButtonSize.lg,
                   onTap: () => context.go('/tracking'),

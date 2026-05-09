@@ -1,27 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/providers/admin_provider.dart';
 import '../../shared/widgets/app_status_bar.dart';
 import '../../shared/widgets/back_button_widget.dart';
 import '../../shared/widgets/section_header.dart';
 import '../../shared/widgets/status_chip.dart';
 import '../../shared/widgets/map_background.dart';
 import '../../shared/widgets/tomato_card.dart';
-import '../../data/mock/mock_admin.dart';
-import 'widgets/kpi_card.dart';
 import 'widgets/admin_queue_item.dart';
 
-class AdminScreen extends StatelessWidget {
+class AdminScreen extends ConsumerWidget {
   const AdminScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? AppColors.darkCanvas : AppColors.bgCanvas;
     final fg1 = isDark ? AppColors.platinum : AppColors.spaceIndigo;
 
-    // Compute 14 dots mathematically
+    final statsAsync = ref.watch(adminStatsProvider);
+    final queueAsync = ref.watch(adminQueueProvider);
+
     final dots = List.generate(14, (i) {
       final x = 30 + (i * 27) % 320;
       final y = 30 + (i * 41) % 150;
@@ -32,6 +34,12 @@ class AdminScreen extends StatelessWidget {
               : AppColors.leaf500;
       return (x: x, y: y, color: color);
     });
+
+    final now = DateTime.now();
+    final hour = now.hour;
+    final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final dayName = days[now.weekday - 1];
+    final timeLabel = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
 
     return Scaffold(
       backgroundColor: bg,
@@ -68,20 +76,58 @@ class AdminScreen extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
               children: [
                 Text(
-                  'Tuesday evening',
+                  '$dayName $timeLabel',
                   style: AppTextStyles.h1(color: fg1),
                 ),
                 const SizedBox(height: 20),
 
                 // KPI grid
-                GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.5,
-                  children: mockAdminKpis.map((k) => KpiCard(kpi: k)).toList(),
+                statsAsync.when(
+                  loading: () => const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                  error: (e, _) => Text('Error: $e',
+                      style: AppTextStyles.meta(color: AppColors.lavenderGrey)),
+                  data: (stats) => GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.5,
+                    children: [
+                      _KpiCard(
+                        label: 'Active deliveries',
+                        value: '${stats.activeDeliveries}',
+                        trend: 'live',
+                        color: AppColors.punchRed,
+                      ),
+                      _KpiCard(
+                        label: 'Runners online',
+                        value: '${stats.runnersOnline}',
+                        trend: 'available',
+                        color: AppColors.ember500,
+                      ),
+                      _KpiCard(
+                        label: 'Pending ID review',
+                        value: '${stats.pendingVerifications}',
+                        trend: stats.pendingVerifications > 0 ? 'needs action' : 'all clear',
+                        color: stats.pendingVerifications > 0
+                            ? AppColors.ember500
+                            : AppColors.leaf500,
+                        isPositive: stats.pendingVerifications == 0,
+                      ),
+                      _KpiCard(
+                        label: 'Disputes',
+                        value: '${stats.openDisputes}',
+                        trend: 'all clear',
+                        color: AppColors.lavenderGrey,
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 24),
 
@@ -100,7 +146,6 @@ class AdminScreen extends StatelessWidget {
                           child: Stack(
                             children: [
                               const MapBackground(height: 180),
-                              // 14 computed dots
                               ...dots.map((d) {
                                 return Positioned(
                                   left: d.x.toDouble(),
@@ -146,24 +191,41 @@ class AdminScreen extends StatelessWidget {
                 // Queue
                 const SectionHeader(title: 'Queue · needs attention'),
                 const SizedBox(height: 12),
-                ...mockAdminQueue.map((item) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: AdminQueueItemWidget(item: item),
-                  );
-                }),
+                queueAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (e, _) => Text('Error loading queue: $e',
+                      style: AppTextStyles.meta(color: AppColors.lavenderGrey)),
+                  data: (items) {
+                    if (items.isEmpty) {
+                      return TomatoCard(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.check_circle_outline_rounded,
+                                color: AppColors.leaf500, size: 20),
+                            const SizedBox(width: 10),
+                            Text('Queue is clear', style: AppTextStyles.meta(color: AppColors.lavenderGrey)),
+                          ],
+                        ),
+                      );
+                    }
+                    return Column(
+                      children: items.map((item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: AdminQueueItemWidget(item: item),
+                      )).toList(),
+                    );
+                  },
+                ),
                 const SizedBox(height: 24),
 
-                // AI summary
+                // AI summary placeholder
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.spaceIndigo.withValues(alpha: isDark ? 0.4 : 0.06),
-                        AppColors.punchRed.withValues(alpha: 0.04),
-                      ],
-                    ),
+                    color: isDark
+                        ? AppColors.spaceIndigo.withValues(alpha: 0.35)
+                        : AppColors.spaceIndigo.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(Sp.rxl),
                     border: Border.all(
                       color: AppColors.spaceIndigo.withValues(alpha: 0.1),
@@ -176,16 +238,82 @@ class AdminScreen extends StatelessWidget {
                         children: [
                           const Icon(Icons.auto_awesome_rounded, color: AppColors.lavenderGrey, size: 16),
                           const SizedBox(width: 8),
-                          Text('End-of-day sense', style: AppTextStyles.micro(color: AppColors.lavenderGrey)),
+                          Text('Operations summary', style: AppTextStyles.micro(color: AppColors.lavenderGrey)),
                         ],
                       ),
                       const SizedBox(height: 10),
-                      Text(mockAiSummary, style: AppTextStyles.meta(color: AppColors.lavenderGrey)),
+                      statsAsync.when(
+                        data: (stats) => Text(
+                          '${stats.activeDeliveries} active deliveries, ${stats.runnersOnline} runners online. '
+                          '${stats.pendingVerifications > 0 ? '${stats.pendingVerifications} identity reviews pending.' : 'No pending reviews.'} '
+                          '${stats.openDisputes == 0 ? 'No disputes.' : '${stats.openDisputes} open disputes.'}',
+                          style: AppTextStyles.meta(color: AppColors.lavenderGrey),
+                        ),
+                        loading: () => Text('Loading...', style: AppTextStyles.meta(color: AppColors.lavenderGrey)),
+                        error: (_, __) => Text('-', style: AppTextStyles.meta(color: AppColors.lavenderGrey)),
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+}
+
+class _KpiCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final String trend;
+  final Color color;
+  final bool isPositive;
+
+  const _KpiCard({
+    required this.label,
+    required this.value,
+    required this.trend,
+    required this.color,
+    this.isPositive = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fg1 = isDark ? AppColors.platinum : AppColors.spaceIndigo;
+
+    return TomatoCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label.toUpperCase(), style: AppTextStyles.micro(color: AppColors.lavenderGrey)),
+          const SizedBox(height: 6),
+          Text(value,
+              style: AppTextStyles.h1(color: fg1).copyWith(
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+              )),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Icon(
+                isPositive ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                color: color,
+                size: 14,
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  trend,
+                  style: AppTextStyles.micro(color: color),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
         ],
       ),

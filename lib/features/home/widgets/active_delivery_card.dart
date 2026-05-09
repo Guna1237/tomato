@@ -6,33 +6,51 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/tomato_card.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../../shared/widgets/status_chip.dart';
-import '../../../data/mock/mock_deliveries.dart';
+import '../../../data/models/delivery.dart';
 
 class ActiveDeliveryCard extends StatelessWidget {
   final Delivery delivery;
-  const ActiveDeliveryCard({super.key, required this.delivery});
+  final String? runnerName;
+
+  const ActiveDeliveryCard({
+    super.key,
+    required this.delivery,
+    this.runnerName,
+  });
+
+  ChipTone get _chipTone {
+    switch (delivery.status) {
+      case DeliveryStatus.matching:  return ChipTone.matching;
+      case DeliveryStatus.accepted:  return ChipTone.neutral;
+      case DeliveryStatus.pickedUp:  return ChipTone.enroute;
+      case DeliveryStatus.enRoute:   return ChipTone.enroute;
+      case DeliveryStatus.delivered: return ChipTone.delivered;
+      default:                       return ChipTone.neutral;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final fg1 = isDark ? AppColors.platinum : AppColors.spaceIndigo;
+    final displayName = runnerName ?? 'Your runner';
 
     return TomatoCard(
-      onTap: () => context.go('/tracking'),
+      onTap: () => context.go('/tracking?delivery_id=${delivery.id}'),
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              UserAvatar(name: delivery.runnerName, size: 40),
+              UserAvatar(name: displayName, size: 40),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      delivery.runnerName,
+                      displayName,
                       style: AppTextStyles.bodySmSemibold(color: fg1),
                     ),
                     Text(
@@ -42,12 +60,11 @@ class ActiveDeliveryCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const StatusChip(label: 'En route', tone: ChipTone.enroute),
+              StatusChip(label: delivery.status.label, tone: _chipTone),
             ],
           ),
           const SizedBox(height: 16),
 
-          // Route info
           Row(
             children: [
               const Icon(Icons.location_on_outlined, color: AppColors.lavenderGrey, size: 14),
@@ -59,17 +76,17 @@ class ActiveDeliveryCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Text(
-                '~${delivery.etaMinutes} min',
-                style: AppTextStyles.metaSemibold(
-                  color: isDark ? const Color(0xFFFF3D52) : AppColors.punchRed,
+              if (delivery.etaMinutes > 0)
+                Text(
+                  '~${delivery.etaMinutes} min',
+                  style: AppTextStyles.metaSemibold(
+                    color: isDark ? const Color(0xFFFF3D52) : AppColors.punchRed,
+                  ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 12),
 
-          // Progress bar
           Stack(
             children: [
               Container(
@@ -105,7 +122,7 @@ class ActiveDeliveryCard extends StatelessWidget {
                 style: AppTextStyles.micro(color: AppColors.lavenderGrey),
               ),
               Text(
-                delivery.id,
+                delivery.id.substring(0, 8),
                 style: AppTextStyles.micro(color: AppColors.lavenderGrey),
               ),
             ],

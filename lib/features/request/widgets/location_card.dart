@@ -45,7 +45,7 @@ class LocationCard extends StatelessWidget {
               children: [
                 Text('PICKUP FROM', style: AppTextStyles.micro(color: AppColors.lavenderGrey)),
                 const SizedBox(height: 4),
-                Text('Main Gate — Parcel Center', style: AppTextStyles.bodySmSemibold(color: fg1)),
+                Text('Main Gate - Parcel Center', style: AppTextStyles.bodySmSemibold(color: fg1)),
                 Divider(height: 20, color: AppColors.lavenderGrey.withValues(alpha: 0.15)),
                 Text('DELIVER TO', style: AppTextStyles.micro(color: AppColors.lavenderGrey)),
                 const SizedBox(height: 4),

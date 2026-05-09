@@ -323,7 +323,7 @@ class _OnboardSlide2 extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(
-            'Your credits, your community',
+            'Your tomatos, your community',
             style: AppTextStyles.h1(
               color: isDark ? AppColors.platinum : AppColors.spaceIndigo,
             ),
@@ -331,7 +331,7 @@ class _OnboardSlide2 extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Earn credits by helping others. Spend them when you need a hand. No money, just collaboration.',
+            'Earn tomatos by helping others. Spend them when you need a hand. No money, just collaboration.',
             style: AppTextStyles.body(color: AppColors.lavenderGrey),
             textAlign: TextAlign.center,
           ),

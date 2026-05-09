@@ -1,17 +1,38 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../data/mock/mock_transactions.dart';
+import '../../../data/models/credit_transaction.dart';
 
 class TransactionListItem extends StatelessWidget {
-  final Transaction transaction;
+  final CreditTransaction transaction;
   final bool showDivider;
   const TransactionListItem({super.key, required this.transaction, this.showDivider = true});
+
+  String _formatDate(DateTime dt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final date = DateTime(dt.year, dt.month, dt.day);
+    if (date == today) {
+      final h = dt.hour;
+      final m = dt.minute.toString().padLeft(2, '0');
+      final period = h < 12 ? 'AM' : 'PM';
+      final hour = h % 12 == 0 ? 12 : h % 12;
+      return 'Today, $hour:$m $period';
+    }
+    if (date == today.subtract(const Duration(days: 1))) {
+      return 'Yesterday';
+    }
+    return '${dt.day}/${dt.month}/${dt.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final fg1 = isDark ? AppColors.platinum : AppColors.spaceIndigo;
+    final isIncoming = transaction.isIncoming;
+    final amountColor = isIncoming ? AppColors.leaf500 : AppColors.punchRed;
+    final iconColor = amountColor;
+    final amountText = '${isIncoming ? '+' : '-'}T${transaction.amount}';
 
     return Column(
       children: [
@@ -22,14 +43,14 @@ class TransactionListItem extends StatelessWidget {
               Container(
                 width: 40, height: 40,
                 decoration: BoxDecoration(
-                  color: transaction.iconColor.withValues(alpha: 0.12),
+                  color: iconColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
-                  transaction.isEarning
+                  isIncoming
                       ? Icons.arrow_downward_rounded
                       : Icons.arrow_upward_rounded,
-                  color: transaction.iconColor,
+                  color: iconColor,
                   size: 18,
                 ),
               ),
@@ -38,8 +59,8 @@ class TransactionListItem extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(transaction.title, style: AppTextStyles.bodySmSemibold(color: fg1)),
-                    Text(transaction.subtitle, style: AppTextStyles.micro(color: AppColors.lavenderGrey)),
+                    Text(transaction.displayLabel, style: AppTextStyles.bodySmSemibold(color: fg1)),
+                    Text(_formatDate(transaction.createdAt), style: AppTextStyles.micro(color: AppColors.lavenderGrey)),
                   ],
                 ),
               ),
@@ -47,13 +68,11 @@ class TransactionListItem extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    transaction.displayAmount,
-                    style: AppTextStyles.bodySmSemibold(
-                      color: transaction.isEarning ? AppColors.leaf500 : fg1,
-                    ),
+                    amountText,
+                    style: AppTextStyles.bodySmSemibold(color: amountColor),
                   ),
                   Text(
-                    transaction.date.split(',').first,
+                    _formatDate(transaction.createdAt).split(',').first,
                     style: AppTextStyles.micro(color: AppColors.lavenderGrey),
                   ),
                 ],
