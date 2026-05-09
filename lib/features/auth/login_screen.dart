@@ -17,6 +17,7 @@ class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
   bool _isSignUp = false;
   bool _isLoading = false;
+  bool _resetSent = false;
 
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
@@ -34,6 +35,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (!_tabController.indexIsChanging) {
         setState(() {
           _isSignUp = _tabController.index == 1;
+          _resetSent = false;
           _emailCtrl.clear();
           _passwordCtrl.clear();
           _confirmCtrl.clear();
@@ -54,11 +56,9 @@ class _LoginScreenState extends State<LoginScreen>
   bool _validEmail(String email) =>
       email.trim().toLowerCase().endsWith('@mahindrauniversity.edu.in');
 
-  // Sign in: email + password
   Future<void> _signIn() async {
     final email = _emailCtrl.text.trim().toLowerCase();
     final password = _passwordCtrl.text;
-
     if (!_validEmail(email)) {
       _showError('Must be a @mahindrauniversity.edu.in address');
       return;
@@ -67,7 +67,6 @@ class _LoginScreenState extends State<LoginScreen>
       _showError('Enter your password');
       return;
     }
-
     setState(() => _isLoading = true);
     try {
       await supabase.auth.signInWithPassword(email: email, password: password);
@@ -79,12 +78,10 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  // Sign up: email + password + confirm → send OTP → verify → profile setup
   Future<void> _signUp() async {
     final email = _emailCtrl.text.trim().toLowerCase();
     final password = _passwordCtrl.text;
     final confirm = _confirmCtrl.text;
-
     if (!_validEmail(email)) {
       _showError('Must be a @mahindrauniversity.edu.in address');
       return;
@@ -97,10 +94,8 @@ class _LoginScreenState extends State<LoginScreen>
       _showError('Passwords do not match');
       return;
     }
-
     setState(() => _isLoading = true);
     try {
-      // signUp creates the account with a password AND sends OTP to verify email
       await supabase.auth.signUp(email: email, password: password);
       if (mounted) {
         context.go('/otp?email=${Uri.encodeComponent(email)}&mode=signup');
@@ -112,8 +107,9 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  // Forgot / set password: sends a magic link / OTP for password reset
+  // Fires exactly once — _resetSent blocks any further taps
   Future<void> _forgotPassword() async {
+    if (_resetSent || _isLoading) return;
     final email = _emailCtrl.text.trim().toLowerCase();
     if (!_validEmail(email)) {
       _showError('Enter your MU email above first');
@@ -123,11 +119,9 @@ class _LoginScreenState extends State<LoginScreen>
     try {
       await supabase.auth.resetPasswordForEmail(
         email,
-        redirectTo: 'https://mu-tomato.vercel.app/reset-password',
+        redirectTo: 'https://web-omega-lilac-84.vercel.app/reset-password',
       );
-      if (mounted) {
-        _showInfo('Password reset link sent to $email');
-      }
+      if (mounted) setState(() => _resetSent = true);
     } catch (e) {
       if (mounted) _showError(_friendlyError(e.toString()));
     } finally {
@@ -141,10 +135,10 @@ class _LoginScreenState extends State<LoginScreen>
       return 'Incorrect email or password';
     }
     if (r.contains('already registered') || r.contains('user already')) {
-      return 'Account already exists — sign in instead';
+      return 'Account exists — sign in instead';
     }
     if (r.contains('email not confirmed')) {
-      return 'Check your email inbox for the verification code';
+      return 'Check your inbox for the verification code';
     }
     if (r.contains('rate') || r.contains('429')) {
       return 'Too many attempts — wait a minute and try again';
@@ -156,53 +150,38 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.spaceIndigo,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: AppColors.spaceIndigo,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+    ));
   }
 
-  void _showInfo(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.leaf500,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-      ),
-    );
-  }
-
-  InputDecoration _field({required String hint, Widget? suffix}) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: AppTextStyles.body(
-          color: AppColors.lavenderGrey.withValues(alpha: 0.7)),
-      suffixIcon: suffix,
-      filled: true,
-      fillColor: Colors.white,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFE8EAF0), width: 1),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFE8EAF0), width: 1),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.punchRed, width: 1.5),
-      ),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-    );
-  }
+  InputDecoration _field({required String hint, Widget? suffix}) =>
+      InputDecoration(
+        hintText: hint,
+        hintStyle: AppTextStyles.body(
+            color: AppColors.lavenderGrey.withValues(alpha: 0.7)),
+        suffixIcon: suffix,
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFFE8EAF0), width: 1),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: Color(0xFFE8EAF0), width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.punchRed, width: 1.5),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+      );
 
   Widget _eyeIcon(bool visible, VoidCallback toggle) => IconButton(
         icon: Icon(
@@ -272,8 +251,8 @@ class _LoginScreenState extends State<LoginScreen>
                         unselectedLabelColor: AppColors.lavenderGrey,
                         labelStyle: AppTextStyles.bodySmSemibold(
                             color: Colors.white),
-                        unselectedLabelStyle:
-                            AppTextStyles.bodySm(color: AppColors.lavenderGrey),
+                        unselectedLabelStyle: AppTextStyles.bodySm(
+                            color: AppColors.lavenderGrey),
                         indicator: BoxDecoration(
                           color: AppColors.punchRed,
                           borderRadius: BorderRadius.circular(11),
@@ -292,21 +271,18 @@ class _LoginScreenState extends State<LoginScreen>
 
                     Text(
                       _isSignUp ? 'Create account' : 'Welcome back',
-                      style:
-                          AppTextStyles.h1(color: AppColors.spaceIndigo),
+                      style: AppTextStyles.h1(color: AppColors.spaceIndigo),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _isSignUp
                           ? 'Choose a password — we\'ll verify your email with a code'
                           : 'Sign in to your university account',
-                      style:
-                          AppTextStyles.body(color: AppColors.lavenderGrey),
+                      style: AppTextStyles.body(color: AppColors.lavenderGrey),
                     ),
 
                     const SizedBox(height: 24),
 
-                    // Email
                     TextField(
                       controller: _emailCtrl,
                       keyboardType: TextInputType.emailAddress,
@@ -317,7 +293,6 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                     const SizedBox(height: 12),
 
-                    // Password
                     TextField(
                       controller: _passwordCtrl,
                       obscureText: !_showPassword,
@@ -329,18 +304,17 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                     ),
 
-                    // Confirm password — sign up only
                     if (_isSignUp) ...[
                       const SizedBox(height: 12),
                       TextField(
                         controller: _confirmCtrl,
                         obscureText: !_showConfirm,
-                        style:
-                            AppTextStyles.body(color: AppColors.spaceIndigo),
+                        style: AppTextStyles.body(color: AppColors.spaceIndigo),
                         decoration: _field(
                           hint: 'Confirm password',
                           suffix: _eyeIcon(_showConfirm,
-                              () => setState(() => _showConfirm = !_showConfirm)),
+                              () => setState(
+                                  () => _showConfirm = !_showConfirm)),
                         ),
                       ),
                     ],
@@ -359,26 +333,53 @@ class _LoginScreenState extends State<LoginScreen>
 
                     // Forgot password — sign in tab only
                     if (!_isSignUp) ...[
-                      const SizedBox(height: 16),
-                      Center(
-                        child: GestureDetector(
-                          onTap: _isLoading ? null : _forgotPassword,
-                          child: Text(
-                            'Forgot password? Send reset link',
-                            style: AppTextStyles.meta(
-                                color: AppColors.punchRed),
+                      const SizedBox(height: 20),
+                      if (_resetSent)
+                        // Confirmation state — no further taps possible
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.leaf500.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: AppColors.leaf500.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.mark_email_read_outlined,
+                                  color: AppColors.leaf500, size: 18),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Reset link sent — check your MU inbox and follow the link to set a new password.',
+                                  style: AppTextStyles.meta(
+                                      color: AppColors.leaf500),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else ...[
+                        Center(
+                          child: GestureDetector(
+                            onTap: _isLoading ? null : _forgotPassword,
+                            child: Text(
+                              'Forgot password? Send reset link',
+                              style: AppTextStyles.meta(
+                                  color: AppColors.punchRed),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Center(
-                        child: Text(
-                          'Previously signed in with OTP? Use "Forgot password" to set one.',
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.meta(
-                              color: AppColors.lavenderGrey),
+                        const SizedBox(height: 8),
+                        Center(
+                          child: Text(
+                            'Signed up before these changes? Use the link above to set a password.',
+                            textAlign: TextAlign.center,
+                            style: AppTextStyles.meta(
+                                color: AppColors.lavenderGrey),
+                          ),
                         ),
-                      ),
+                      ],
                     ],
 
                     if (_isSignUp) ...[
