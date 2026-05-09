@@ -121,7 +121,10 @@ class _LoginScreenState extends State<LoginScreen>
     }
     setState(() => _isLoading = true);
     try {
-      await supabase.auth.resetPasswordForEmail(email);
+      await supabase.auth.resetPasswordForEmail(
+        email,
+        redirectTo: 'https://mu-tomato.vercel.app/reset-password',
+      );
       if (mounted) {
         _showInfo('Password reset link sent to $email');
       }

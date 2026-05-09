@@ -8,6 +8,7 @@ import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/otp_screen.dart';
 import '../../features/auth/profile_setup_screen.dart';
+import '../../features/auth/reset_password_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/wallet/wallet_screen.dart';
 import '../../features/profile/profile_screen.dart';
@@ -57,7 +58,7 @@ final appRouter = GoRouter(
   initialLocation: '/splash',
   redirect: (context, state) {
     final session = Supabase.instance.client.auth.currentSession;
-    final isPublic = ['/splash', '/onboarding', '/login', '/otp', '/profile-setup']
+    final isPublic = ['/splash', '/onboarding', '/login', '/otp', '/profile-setup', '/reset-password']
         .any((r) => state.matchedLocation.startsWith(r));
     if (session == null && !isPublic) return '/login';
     if (session != null && (state.matchedLocation == '/login' || state.matchedLocation == '/onboarding')) return '/home';
@@ -89,6 +90,14 @@ final appRouter = GoRouter(
       pageBuilder: (_, state) => CustomTransitionPage(
         key: state.pageKey,
         child: const OtpScreen(),
+        transitionsBuilder: _slideRight,
+      ),
+    ),
+    GoRoute(
+      path: '/reset-password',
+      pageBuilder: (_, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const ResetPasswordScreen(),
         transitionsBuilder: _slideRight,
       ),
     ),
