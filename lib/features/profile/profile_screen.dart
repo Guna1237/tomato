@@ -550,7 +550,9 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
                           : Switch(
                               value: user.runnerActive,
                               onChanged: widget.onToggleRunnerActive,
-                              activeThumbColor: AppColors.punchRed,
+                              thumbColor: WidgetStateProperty.resolveWith(
+                                (s) => s.contains(WidgetState.selected) ? AppColors.punchRed : null,
+                              ),
                             ),
                     ],
                   ),

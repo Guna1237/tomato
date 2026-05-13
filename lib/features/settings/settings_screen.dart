@@ -112,8 +112,12 @@ class SettingsScreen extends ConsumerWidget {
                     trailing: Switch.adaptive(
                       value: isDark,
                       onChanged: (_) => ref.read(themeModeProvider.notifier).toggle(),
-                      activeThumbColor: brand,
-                      activeTrackColor: brand.withValues(alpha: 0.3),
+                      thumbColor: WidgetStateProperty.resolveWith(
+                        (s) => s.contains(WidgetState.selected) ? brand : null,
+                      ),
+                      trackColor: WidgetStateProperty.resolveWith(
+                        (s) => s.contains(WidgetState.selected) ? brand.withValues(alpha: 0.3) : null,
+                      ),
                     ),
                   ),
                 ),
