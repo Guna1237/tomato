@@ -113,7 +113,7 @@ class _OtpScreenState extends State<OtpScreen> {
       if (mounted) {
         final msg = e.toString().toLowerCase().contains('invalid') ||
                 e.toString().toLowerCase().contains('expired')
-            ? 'Invalid or expired code — check your email and try again'
+            ? 'Invalid or expired code. Check your email and try again.'
             : 'Something went wrong, try again';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -230,8 +230,8 @@ class _OtpScreenState extends State<OtpScreen> {
                               _startTimer();
                             } catch (e) {
                               final msg = e.toString().contains('429') || e.toString().toLowerCase().contains('rate')
-                                  ? 'Too many requests — wait a minute before resending'
-                                  : 'Could not resend — try again';
+                                  ? 'Too many requests. Wait a minute before resending.'
+                                  : 'Could not resend. Try again.';
                               messenger.showSnackBar(SnackBar(
                                 content: Text(msg),
                                 behavior: SnackBarBehavior.floating,

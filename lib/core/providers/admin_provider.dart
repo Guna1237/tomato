@@ -31,28 +31,36 @@ class AdminQueueEntry {
   });
 }
 
-final adminStatsProvider = FutureProvider<AdminStats>((ref) async {
-  final results = await Future.wait([
-    supabase
-        .from('deliveries')
-        .select('id')
-        .inFilter('status', ['pending', 'matching', 'accepted', 'picked_up', 'en_route']),
-    supabase
-        .from('profiles')
-        .select('id')
-        .eq('runner_active', true),
-    supabase
-        .from('profiles')
-        .select('id')
-        .inFilter('face_status', ['pending', 'flagged']),
-  ]);
+final adminStatsProvider = StreamProvider<AdminStats>((ref) async* {
+  Future<AdminStats> fetch() async {
+    final results = await Future.wait([
+      supabase
+          .from('deliveries')
+          .select('id')
+          .inFilter('status', ['pending', 'matching', 'accepted', 'picked_up', 'en_route']),
+      supabase
+          .from('profiles')
+          .select('id')
+          .eq('runner_active', true),
+      supabase
+          .from('profiles')
+          .select('id')
+          .inFilter('face_status', ['pending', 'flagged']),
+    ]);
+    return AdminStats(
+      activeDeliveries: (results[0] as List).length,
+      runnersOnline: (results[1] as List).length,
+      pendingVerifications: (results[2] as List).length,
+      openDisputes: 0,
+    );
+  }
 
-  return AdminStats(
-    activeDeliveries: (results[0] as List).length,
-    runnersOnline: (results[1] as List).length,
-    pendingVerifications: (results[2] as List).length,
-    openDisputes: 0,
-  );
+  yield await fetch();
+
+  // Refresh every 15 seconds for live feel
+  await for (final _ in Stream.periodic(const Duration(seconds: 15))) {
+    yield await fetch();
+  }
 });
 
 final adminQueueProvider = FutureProvider<List<AdminQueueEntry>>((ref) async {
@@ -70,7 +78,7 @@ final adminQueueProvider = FutureProvider<List<AdminQueueEntry>>((ref) async {
     final faceStatus = p['face_status'] as String;
     queue.add(AdminQueueEntry(
       id: p['id'] as String,
-      title: 'Identity review · $name',
+      title: 'Identity review: $name',
       subtitle: faceStatus == 'flagged'
           ? 'Low confidence score - manual check needed'
           : 'New user photo awaiting approval',
@@ -94,7 +102,7 @@ final adminQueueProvider = FutureProvider<List<AdminQueueEntry>>((ref) async {
     final elapsed = DateTime.now().difference(created).inMinutes;
     queue.add(AdminQueueEntry(
       id: d['id'] as String,
-      title: 'No runner · $pickup → $dropoff',
+      title: 'No runner: $pickup to $dropoff',
       subtitle: 'Matching for ${elapsed}m with no interest',
       status: 'Warn',
       isUrgent: true,

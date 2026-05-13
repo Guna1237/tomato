@@ -24,9 +24,9 @@ class QuickActionsGrid extends StatelessWidget {
                 borderRadius: BorderRadius.circular(Sp.rxl),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.punchRed.withValues(alpha: 0.3),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
+                    color: AppColors.punchRed.withValues(alpha: 0.18),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),

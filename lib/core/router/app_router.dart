@@ -13,7 +13,6 @@ import '../../features/home/home_screen.dart';
 import '../../features/wallet/wallet_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/notifications/notifications_screen.dart';
-import '../../features/assistant/assistant_screen.dart';
 import '../../features/request/request_screen.dart';
 import '../../features/matching/matching_screen.dart';
 import '../../features/tracking/tracking_screen.dart';
@@ -21,6 +20,7 @@ import '../../features/emergency/emergency_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/admin/admin_screen.dart';
 import '../../features/runner/runner_screen.dart';
+import '../../features/messaging/messaging_screen.dart';
 import '../../shared/widgets/app_tab_bar.dart';
 
 Widget _slideUp(
@@ -119,10 +119,6 @@ final appRouter = GoRouter(
           pageBuilder: (_, state) => NoTransitionPage(child: const HomeScreen(), key: state.pageKey),
         ),
         GoRoute(
-          path: '/assistant',
-          pageBuilder: (_, state) => NoTransitionPage(child: const AssistantScreen(), key: state.pageKey),
-        ),
-        GoRoute(
           path: '/wallet',
           pageBuilder: (_, state) => NoTransitionPage(child: const WalletScreen(), key: state.pageKey),
         ),
@@ -197,6 +193,14 @@ final appRouter = GoRouter(
       pageBuilder: (_, state) => CustomTransitionPage(
         key: state.pageKey,
         child: const RunnerScreen(),
+        transitionsBuilder: _slideRight,
+      ),
+    ),
+    GoRoute(
+      path: '/messaging',
+      pageBuilder: (_, state) => CustomTransitionPage(
+        key: state.pageKey,
+        child: const MessagingScreen(),
         transitionsBuilder: _slideRight,
       ),
     ),

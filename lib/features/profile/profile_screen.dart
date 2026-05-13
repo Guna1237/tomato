@@ -1,16 +1,16 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions;
 import '../../core/services/face_detection_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/supabase/supabase_client.dart';
 import '../../shared/widgets/app_status_bar.dart';
+import '../../shared/widgets/profile_avatar.dart';
 import '../../shared/widgets/section_header.dart';
 import '../../shared/widgets/tomato_card.dart';
 import '../../data/models/profile.dart';
@@ -138,18 +138,28 @@ class _ProfileBody extends ConsumerStatefulWidget {
 class _ProfileBodyState extends ConsumerState<_ProfileBody> {
   bool _editingName = false;
   bool _savingName = false;
+  bool _editingPhone = false;
+  bool _savingPhone = false;
+  bool _editingRoll = false;
+  bool _savingRoll = false;
   bool _uploadingPhoto = false;
   late TextEditingController _nameController;
+  late TextEditingController _phoneController;
+  late TextEditingController _rollController;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.user.displayName);
+    _phoneController = TextEditingController(text: widget.user.phoneNumber ?? '');
+    _rollController = TextEditingController(text: widget.user.rollNumber ?? '');
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _phoneController.dispose();
+    _rollController.dispose();
     super.dispose();
   }
 
@@ -176,6 +186,42 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
     }
   }
 
+  Future<void> _savePhone() async {
+    final val = _phoneController.text.trim();
+    if (val == (widget.user.phoneNumber ?? '')) {
+      setState(() => _editingPhone = false);
+      return;
+    }
+    setState(() => _savingPhone = true);
+    try {
+      await supabase
+          .from('profiles')
+          .update({'phone_number': val.isEmpty ? null : val})
+          .eq('id', widget.user.id);
+      ref.invalidate(currentUserProvider);
+    } finally {
+      if (mounted) setState(() { _savingPhone = false; _editingPhone = false; });
+    }
+  }
+
+  Future<void> _saveRoll() async {
+    final val = _rollController.text.trim();
+    if (val == (widget.user.rollNumber ?? '')) {
+      setState(() => _editingRoll = false);
+      return;
+    }
+    setState(() => _savingRoll = true);
+    try {
+      await supabase
+          .from('profiles')
+          .update({'roll_number': val.isEmpty ? null : val})
+          .eq('id', widget.user.id);
+      ref.invalidate(currentUserProvider);
+    } finally {
+      if (mounted) setState(() { _savingRoll = false; _editingRoll = false; });
+    }
+  }
+
   Future<void> _pickAndUploadPhoto() async {
     if (_uploadingPhoto) return;
     final picker = ImagePicker();
@@ -194,7 +240,14 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
     setState(() => _uploadingPhoto = true);
     try {
       final bytes = await picked.readAsBytes();
-      final photoBase64 = base64Encode(bytes);
+      final user = supabase.auth.currentUser!;
+      final storagePath = '${user.id}/profile.jpg';
+
+      await supabase.storage.from('profile-photos').uploadBinary(
+        storagePath,
+        bytes,
+        fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true),
+      );
 
       double faceConfidence = 0.0;
       if (!kIsWeb) {
@@ -206,9 +259,11 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
       }
 
       await supabase.functions.invoke('validate-identity', body: {
-        'photo_base64': photoBase64,
+        'user_id': user.id,
+        'email': user.email,
         'display_name': widget.user.displayName,
-        'roll_number': widget.user.rollNumber ?? '',
+        if (widget.user.rollNumber != null) 'roll_number': widget.user.rollNumber,
+        'photo_path': storagePath,
         'face_confidence': faceConfidence,
       });
 
@@ -231,10 +286,6 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
     final isDark = widget.isDark;
     final fg1 = widget.fg1;
 
-    final initial = user.displayName.isNotEmpty
-        ? user.displayName.substring(0, 1).toUpperCase()
-        : '?';
-
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
       children: [
@@ -250,37 +301,28 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
                     onTap: _uploadingPhoto ? null : _pickAndUploadPhoto,
                     child: Stack(
                       children: [
-                        Container(
+                        SizedBox(
                           width: 72, height: 72,
-                          decoration: const BoxDecoration(
-                            color: AppColors.punchRed,
-                            shape: BoxShape.circle,
-                          ),
-                          clipBehavior: Clip.antiAlias,
                           child: _uploadingPhoto
-                              ? const Center(
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2.5,
+                              ? Container(
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.punchRed,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
+                                    ),
                                   ),
                                 )
-                              : user.photoUrl != null
-                                  ? CachedNetworkImage(
-                                      imageUrl: user.photoUrl!,
-                                      fit: BoxFit.cover,
-                                      errorWidget: (_, __, ___) => Center(
-                                        child: Text(
-                                          initial,
-                                          style: AppTextStyles.h2(color: Colors.white),
-                                        ),
-                                      ),
-                                    )
-                                  : Center(
-                                      child: Text(
-                                        initial,
-                                        style: AppTextStyles.h2(color: Colors.white),
-                                      ),
-                                    ),
+                              : ProfileAvatar(
+                                  photoPath: user.photoUrl,
+                                  displayName: user.displayName,
+                                  radius: 36,
+                                  backgroundColor: AppColors.punchRed,
+                                  initialsStyle: AppTextStyles.h2(color: Colors.white),
+                                ),
                         ),
                         if (!_uploadingPhoto)
                           Positioned(
@@ -378,15 +420,41 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
                           ],
                         ),
                         const SizedBox(height: 2),
-                        if (user.rollNumber != null)
-                          Text(user.rollNumber!, style: AppTextStyles.meta(color: AppColors.lavenderGrey)),
                         Text(user.email, style: AppTextStyles.meta(color: AppColors.lavenderGrey)),
                       ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+              Divider(color: isDark ? const Color(0x12EDF2F4) : const Color(0x0A2B2D42)),
+              const SizedBox(height: 12),
+
+              // Editable contact fields
+              _EditableField(
+                label: 'Roll number',
+                controller: _rollController,
+                editing: _editingRoll,
+                saving: _savingRoll,
+                hint: 'e.g. CS2024001',
+                keyboardType: TextInputType.text,
+                fg1: fg1,
+                onEdit: () => setState(() => _editingRoll = true),
+                onSave: _saveRoll,
+              ),
+              const SizedBox(height: 8),
+              _EditableField(
+                label: 'Phone number',
+                controller: _phoneController,
+                editing: _editingPhone,
+                saving: _savingPhone,
+                hint: 'e.g. +91 98765 43210',
+                keyboardType: TextInputType.phone,
+                fg1: fg1,
+                onEdit: () => setState(() => _editingPhone = true),
+                onSave: _savePhone,
+              ),
+              const SizedBox(height: 12),
               Divider(color: isDark ? const Color(0x12EDF2F4) : const Color(0x0A2B2D42)),
               const SizedBox(height: 16),
 
@@ -553,6 +621,86 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
             ),
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _EditableField extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final bool editing;
+  final bool saving;
+  final String hint;
+  final TextInputType keyboardType;
+  final Color fg1;
+  final VoidCallback onEdit;
+  final VoidCallback onSave;
+
+  const _EditableField({
+    required this.label,
+    required this.controller,
+    required this.editing,
+    required this.saving,
+    required this.hint,
+    required this.keyboardType,
+    required this.fg1,
+    required this.onEdit,
+    required this.onSave,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 100,
+          child: Text(label, style: AppTextStyles.meta(color: AppColors.lavenderGrey)),
+        ),
+        Expanded(
+          child: editing
+              ? TextField(
+                  controller: controller,
+                  autofocus: true,
+                  keyboardType: keyboardType,
+                  style: AppTextStyles.bodySm(color: fg1),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: hint,
+                    hintStyle: AppTextStyles.bodySm(color: AppColors.lavenderGrey),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppColors.punchRed.withValues(alpha: 0.6)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.punchRed),
+                    ),
+                  ),
+                  onSubmitted: (_) => onSave(),
+                )
+              : Text(
+                  controller.text.isEmpty ? hint : controller.text,
+                  style: AppTextStyles.bodySm(
+                    color: controller.text.isEmpty ? AppColors.lavenderGrey : fg1,
+                  ),
+                ),
+        ),
+        const SizedBox(width: 8),
+        saving
+            ? const SizedBox(
+                width: 18, height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : GestureDetector(
+                onTap: editing ? onSave : onEdit,
+                child: Icon(
+                  editing ? Icons.check_circle_outline_rounded : Icons.edit_outlined,
+                  size: 18,
+                  color: AppColors.lavenderGrey,
+                ),
+              ),
       ],
     );
   }

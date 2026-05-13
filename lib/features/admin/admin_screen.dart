@@ -59,7 +59,7 @@ class AdminScreen extends ConsumerWidget {
                       children: [
                         Text('Admin', style: AppTextStyles.h3(color: fg1)),
                         const SizedBox(width: 8),
-                        Text('· operations', style: AppTextStyles.h3(color: AppColors.lavenderGrey)),
+                        Text('Operations', style: AppTextStyles.h3(color: AppColors.lavenderGrey)),
                       ],
                     ),
                   ],
@@ -158,9 +158,8 @@ class AdminScreen extends ConsumerWidget {
                                       shape: BoxShape.circle,
                                       boxShadow: [
                                         BoxShadow(
-                                          color: d.color.withValues(alpha: 0.55),
-                                          blurRadius: 6,
-                                          spreadRadius: 2,
+                                          color: d.color.withValues(alpha: 0.3),
+                                          blurRadius: 4,
                                         ),
                                       ],
                                     ),
@@ -189,7 +188,7 @@ class AdminScreen extends ConsumerWidget {
                 const SizedBox(height: 24),
 
                 // Queue
-                const SectionHeader(title: 'Queue · needs attention'),
+                const SectionHeader(title: 'Queue'),
                 const SizedBox(height: 12),
                 queueAsync.when(
                   loading: () => const SizedBox.shrink(),
@@ -219,7 +218,6 @@ class AdminScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 24),
 
-                // AI summary placeholder
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
@@ -236,7 +234,7 @@ class AdminScreen extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.auto_awesome_rounded, color: AppColors.lavenderGrey, size: 16),
+                          const Icon(Icons.bar_chart_rounded, color: AppColors.lavenderGrey, size: 16),
                           const SizedBox(width: 8),
                           Text('Operations summary', style: AppTextStyles.micro(color: AppColors.lavenderGrey)),
                         ],

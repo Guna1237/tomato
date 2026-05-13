@@ -7,8 +7,8 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/tomato_card.dart';
 
-// Mahindra University, Survey No 62/1A, Bahadurpally, Jeedimetla, Hyderabad
-const _campusCenter = LatLng(17.5873, 78.4414);
+// Mahindra University, Bahadurpally, Hyderabad
+const _campusCenter = LatLng(17.5684696, 78.4362807);
 
 class CampusMapCard extends StatelessWidget {
   const CampusMapCard({super.key});
@@ -157,9 +157,8 @@ class _PulsingDot extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: color.withValues(alpha: 0.5),
-                  blurRadius: 6,
-                  spreadRadius: 1,
+                  color: color.withValues(alpha: 0.35),
+                  blurRadius: 4,
                 ),
               ],
             ),

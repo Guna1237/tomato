@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -24,12 +27,52 @@ class TrackingScreen extends ConsumerStatefulWidget {
 class _TrackingScreenState extends ConsumerState<TrackingScreen> {
   late String _deliveryId;
   bool _isActionLoading = false;
+  Timer? _locationTimer;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _deliveryId =
         GoRouterState.of(context).uri.queryParameters['delivery_id'] ?? '';
+  }
+
+  void _startLocationUpdates() {
+    _locationTimer?.cancel();
+    _locationTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      _pushLocation();
+    });
+    _pushLocation(); // push immediately on start
+  }
+
+  Future<void> _pushLocation() async {
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        final req = await Geolocator.requestPermission();
+        if (req == LocationPermission.denied ||
+            req == LocationPermission.deniedForever) { return; }
+      }
+      if (permission == LocationPermission.deniedForever) { return; }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
+      await supabase.from('deliveries').update({
+        'runner_lat': pos.latitude,
+        'runner_lng': pos.longitude,
+        'runner_location_updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', _deliveryId);
+    } catch (_) {
+      // Silently ignore — location is best-effort
+    }
+  }
+
+  @override
+  void dispose() {
+    _locationTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _updateStatus(DeliveryStatus newStatus) async {
@@ -82,6 +125,38 @@ class _TrackingScreenState extends ConsumerState<TrackingScreen> {
     }
   }
 
+  Future<void> _dialOtherParty(Delivery delivery, bool isRunner) async {
+    final otherUserId =
+        isRunner ? delivery.requesterId : delivery.runnerId;
+    if (otherUserId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('No phone number on file for this user'),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+      return;
+    }
+    final row = await supabase
+        .from('profiles')
+        .select('phone_number')
+        .eq('id', otherUserId)
+        .maybeSingle();
+    final phone = row?['phone_number'] as String?;
+    if (phone == null || phone.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('No phone number on file for this user'),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+      return;
+    }
+    final digits = phone.replaceAll(RegExp(r'[\s\-()]'), '');
+    final uri = Uri(scheme: 'tel', path: digits);
+    if (await canLaunchUrl(uri)) await launchUrl(uri);
+  }
+
   @override
   Widget build(BuildContext context) {
     final deliveryAsync = _deliveryId.isEmpty
@@ -89,11 +164,32 @@ class _TrackingScreenState extends ConsumerState<TrackingScreen> {
         : ref.watch(deliveryByIdProvider(_deliveryId));
     final currentUserId = ref.watch(currentUserIdProvider);
 
+    // Start location updates when runner has an active delivery
+    deliveryAsync.whenData((delivery) {
+      if (delivery == null) return;
+      final isRunner = delivery.runnerId == currentUserId;
+      final isActive = delivery.status == DeliveryStatus.accepted ||
+          delivery.status == DeliveryStatus.pickedUp ||
+          delivery.status == DeliveryStatus.enRoute;
+      if (isRunner && isActive && _locationTimer == null) {
+        _startLocationUpdates();
+      }
+      if (!isActive) {
+        _locationTimer?.cancel();
+        _locationTimer = null;
+      }
+    });
+
+    final delivery = deliveryAsync.valueOrNull;
+
     return Scaffold(
       body: Stack(
         children: [
-          // Full-screen map (unchanged mock CustomPaint)
-          const RouteMapAnimation(),
+          // Full-screen map with live runner location
+          RouteMapAnimation(
+            runnerLat: delivery?.runnerLat,
+            runnerLng: delivery?.runnerLng,
+          ),
 
           // Top frosted bar
           Positioned(
@@ -150,18 +246,29 @@ class _TrackingScreenState extends ConsumerState<TrackingScreen> {
                       error: (_, __) => const SizedBox.shrink(),
                     ),
                     const SizedBox(width: 10),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          color: Colors.white.withValues(alpha: 0.75),
-                          child: const Icon(Icons.phone_outlined,
-                              size: 18, color: AppColors.spaceIndigo),
-                        ),
-                      ),
+                    deliveryAsync.when(
+                      data: (delivery) {
+                        if (delivery == null) return const SizedBox.shrink();
+                        final isRunner = delivery.runnerId == currentUserId;
+                        return GestureDetector(
+                          onTap: () => _dialOtherParty(delivery, isRunner),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                color: Colors.white.withValues(alpha: 0.75),
+                                child: const Icon(Icons.phone_outlined,
+                                    size: 18, color: AppColors.spaceIndigo),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      loading: () => const SizedBox(width: 40, height: 40),
+                      error: (_, __) => const SizedBox.shrink(),
                     ),
                   ],
                 ),
@@ -236,11 +343,52 @@ class _TrackingBottomSheet extends StatefulWidget {
 
 class _TrackingBottomSheetState extends State<_TrackingBottomSheet> {
   final TextEditingController _pinController = TextEditingController();
+  bool _isCalling = false;
 
   @override
   void dispose() {
     _pinController.dispose();
     super.dispose();
+  }
+
+  Future<void> _callOtherParty() async {
+    if (_isCalling) return;
+    setState(() => _isCalling = true);
+    try {
+      final otherUserId = widget.isRunner
+          ? widget.delivery.requesterId
+          : widget.delivery.runnerId;
+      if (otherUserId == null) {
+        _showNoPhone();
+        return;
+      }
+      final row = await supabase
+          .from('profiles')
+          .select('phone_number')
+          .eq('id', otherUserId)
+          .maybeSingle();
+      final phone = row?['phone_number'] as String?;
+      if (phone == null || phone.isEmpty) {
+        _showNoPhone();
+        return;
+      }
+      final digits = phone.replaceAll(RegExp(r'[\s\-()]'), '');
+      final uri = Uri(scheme: 'tel', path: digits);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        _showNoPhone();
+      }
+    } finally {
+      if (mounted) setState(() => _isCalling = false);
+    }
+  }
+
+  void _showNoPhone() {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('No phone number on file for this user'),
+      behavior: SnackBarBehavior.floating,
+    ));
   }
 
   @override
@@ -322,11 +470,12 @@ class _TrackingBottomSheetState extends State<_TrackingBottomSheet> {
           _LiveDeliveryStepper(status: widget.delivery.status),
           const SizedBox(height: 20),
 
-          // PIN display for requester when active
+          // PIN display for requester — stays visible until transfer completes
           if (!widget.isRunner &&
               (widget.delivery.status == DeliveryStatus.accepted ||
                   widget.delivery.status == DeliveryStatus.pickedUp ||
-                  widget.delivery.status == DeliveryStatus.enRoute) &&
+                  widget.delivery.status == DeliveryStatus.enRoute ||
+                  widget.delivery.status == DeliveryStatus.delivered) &&
               widget.delivery.deliveryPin != null) ...[
             _PinDisplay(pin: widget.delivery.deliveryPin!),
             const SizedBox(height: 20),
@@ -337,21 +486,23 @@ class _TrackingBottomSheetState extends State<_TrackingBottomSheet> {
             children: [
               Expanded(
                 child: TomatoButton(
-                  label: 'Share ETA',
+                  label: 'Chat',
                   variant: TomatoButtonVariant.secondary,
-                  leading: const Icon(Icons.share_outlined, size: 16),
+                  leading: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
                   isFullWidth: true,
-                  onTap: () {},
+                  onTap: () => context.push(
+                      '/messaging?delivery_id=${widget.delivery.id}'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: TomatoButton(
-                  label: 'Call runner',
+                  label: widget.isRunner ? 'Call requester' : 'Call runner',
                   variant: TomatoButtonVariant.soft,
                   leading: const Icon(Icons.call_outlined, size: 16),
                   isFullWidth: true,
-                  onTap: () {},
+                  isLoading: _isCalling,
+                  onTap: _isCalling ? null : _callOtherParty,
                 ),
               ),
             ],

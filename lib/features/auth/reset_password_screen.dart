@@ -50,7 +50,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       }
     } catch (e) {
       if (mounted) {
-        _showErr('Could not update password — the link may have expired');
+        _showErr('Could not update password. The link may have expired.');
         setState(() => _isLoading = false);
       }
     }

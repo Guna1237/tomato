@@ -142,7 +142,7 @@ class HomeScreen extends ConsumerWidget {
                             BoxShadow(color: Color(0x0A2B2D42), blurRadius: 4, offset: Offset(0, 1)),
                           ],
                         ),
-                        child: const Icon(Icons.auto_awesome_rounded,
+                        child: const Icon(Icons.tips_and_updates_outlined,
                             color: AppColors.punchRed, size: 16),
                       ),
                       const SizedBox(width: 12),

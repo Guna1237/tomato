@@ -93,3 +93,6 @@ windows/build/
 .vercel
 .env*.local
 .superpowers/
+
+.vercel
+.env*.local

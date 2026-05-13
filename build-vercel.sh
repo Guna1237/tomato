@@ -16,3 +16,9 @@ export PATH="$FLUTTER_DIR/bin:$PATH"
 flutter config --no-analytics
 flutter pub get
 flutter build web --release
+
+# Pin Vercel project — prevents project.json from being overwritten by vercel link
+mkdir -p build/web/.vercel
+cat > build/web/.vercel/project.json <<'EOF'
+{"projectId":"prj_di5mduRXxdXuFva0soDuyTKtEJfQ","orgId":"team_yo4gmMpIsl0PNUdjev1yat9k","projectName":"web"}
+EOF

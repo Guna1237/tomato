@@ -5,6 +5,7 @@ class Profile {
   final String displayName;
   final String? rollNumber;
   final String? employeeId;
+  final String? phoneNumber;
   final String? photoUrl;
   final String? fcmToken;
   final String faceStatus; // pending, approved, rejected, flagged
@@ -23,6 +24,7 @@ class Profile {
     required this.displayName,
     this.rollNumber,
     this.employeeId,
+    this.phoneNumber,
     this.photoUrl,
     this.fcmToken,
     required this.faceStatus,
@@ -43,6 +45,7 @@ class Profile {
       displayName: json['display_name'] as String,
       rollNumber: json['roll_number'] as String?,
       employeeId: json['employee_id'] as String?,
+      phoneNumber: json['phone_number'] as String?,
       photoUrl: json['photo_url'] as String?,
       fcmToken: json['fcm_token'] as String?,
       faceStatus: json['face_status'] as String? ?? 'pending',
@@ -65,6 +68,7 @@ class Profile {
     'display_name': displayName,
     if (rollNumber != null) 'roll_number': rollNumber,
     if (employeeId != null) 'employee_id': employeeId,
+    if (phoneNumber != null) 'phone_number': phoneNumber,
     if (photoUrl != null) 'photo_url': photoUrl,
     if (fcmToken != null) 'fcm_token': fcmToken,
     'face_status': faceStatus,
@@ -89,6 +93,7 @@ class Profile {
 
   Profile copyWith({
     String? photoUrl,
+    String? phoneNumber,
     String? faceStatus,
     double? faceConfidence,
     int? tomatoCredits,
@@ -105,6 +110,7 @@ class Profile {
       displayName: displayName,
       rollNumber: rollNumber,
       employeeId: employeeId,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
       photoUrl: photoUrl ?? this.photoUrl,
       fcmToken: fcmToken ?? this.fcmToken,
       faceStatus: faceStatus ?? this.faceStatus,

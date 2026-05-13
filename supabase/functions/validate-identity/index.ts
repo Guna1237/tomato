@@ -13,7 +13,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json()
-    const { user_id, email, display_name, roll_number, photo_path, face_confidence } = body
+    const { user_id, email, display_name, roll_number, phone_number, photo_path, face_confidence } = body
 
     if (!user_id || !email) {
       return new Response(
@@ -57,30 +57,39 @@ serve(async (req) => {
     const confidence = typeof face_confidence === 'number' ? face_confidence : 0
     const faceStatus = confidence >= 0.65 ? 'approved' : 'pending'
 
-    // Build photo_url if photo was uploaded
-    let photoUrl: string | null = null
-    if (photo_path) {
-      const { data } = supabase.storage.from('profile-photos').getPublicUrl(photo_path)
-      photoUrl = data?.publicUrl ?? null
-    }
+    // Store the storage path directly — the bucket is private, so we use
+    // signed URLs at display time rather than a public URL here.
+    const photoUrl: string | null = photo_path ?? null
 
     // Use provided display_name or fall back to email prefix
     const name = display_name?.trim() || prefix.toUpperCase()
 
-    // Upsert profile — handles both new users and re-runs after partial failure
+    // Check if profile already exists so we don't reset credits on re-runs
+    const { data: existing } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user_id)
+      .maybeSingle()
+
+    const upsertData: Record<string, unknown> = {
+      id: user_id,
+      email: emailLower,
+      role,
+      display_name: name,
+      roll_number: detectedRollNumber,
+      phone_number: phone_number || null,
+      photo_url: photoUrl,
+      face_status: faceStatus,
+      face_confidence: confidence,
+    }
+    // Only set initial credits on new profile, never overwrite existing balance
+    if (!existing) {
+      upsertData.tomato_credits = 50
+    }
+
     const { error: profileError } = await supabase
       .from('profiles')
-      .upsert({
-        id: user_id,
-        email: emailLower,
-        role,
-        display_name: name,
-        roll_number: detectedRollNumber,
-        photo_url: photoUrl,
-        face_status: faceStatus,
-        face_confidence: confidence,
-        tomato_credits: 50,
-      }, { onConflict: 'id', ignoreDuplicates: false })
+      .upsert(upsertData, { onConflict: 'id', ignoreDuplicates: false })
 
     if (profileError) throw profileError
 

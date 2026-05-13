@@ -61,23 +61,49 @@ serve(async (req) => {
       )
     }
 
-    // Fetch runner profile then update atomically
-    const { data: runner } = await supabase
-      .from('profiles')
-      .select('tomato_credits, reliability, streak_days')
-      .eq('id', delivery.runner_id)
-      .single()
-
-    if (runner) {
-      await supabase
+    // Fetch both profiles
+    const [{ data: runner }, { data: requester }] = await Promise.all([
+      supabase
         .from('profiles')
-        .update({
-          tomato_credits: runner.tomato_credits + delivery.credit_cost,
-          reliability: Math.min(1.0, runner.reliability + 0.002),
-          streak_days: runner.streak_days + 1,
-        })
+        .select('tomato_credits, reliability, streak_days')
         .eq('id', delivery.runner_id)
+        .single(),
+      supabase
+        .from('profiles')
+        .select('tomato_credits')
+        .eq('id', delivery.requester_id)
+        .single(),
+    ])
+
+    if (!runner || !requester) {
+      return new Response(
+        JSON.stringify({ error: 'Could not load user profiles' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
+
+    if (requester.tomato_credits < delivery.credit_cost) {
+      return new Response(
+        JSON.stringify({ error: 'Requester has insufficient credits' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Deduct from requester
+    await supabase
+      .from('profiles')
+      .update({ tomato_credits: requester.tomato_credits - delivery.credit_cost })
+      .eq('id', delivery.requester_id)
+
+    // Pay runner and update stats
+    await supabase
+      .from('profiles')
+      .update({
+        tomato_credits: runner.tomato_credits + delivery.credit_cost,
+        reliability: Math.min(1.0, runner.reliability + 0.002),
+        streak_days: runner.streak_days + 1,
+      })
+      .eq('id', delivery.runner_id)
 
     // Record transaction
     await supabase.from('credit_transactions').insert({
@@ -97,8 +123,8 @@ serve(async (req) => {
     // Notify runner
     await supabase.from('notifications').insert({
       user_id: delivery.runner_id,
-      title: 'Credits earned! 🍅',
-      body: `You earned ${delivery.credit_cost} tomato credits for your delivery.`,
+      title: 'Credits received',
+      body: `You earned ${delivery.credit_cost} tomato credits for completing a delivery.`,
       type: 'credit',
     })
 

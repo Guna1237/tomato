@@ -30,9 +30,9 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
   int _selectedSizeIndex = 1;
   String get _selectedSize => ['S', 'M', 'L'][_selectedSizeIndex];
 
-  // Urgency slider 0.0–1.0 maps to multiplier 1.0–1.5
+  // Urgency: 0.0 = 15 min (most urgent, highest cost), 1.0 = Tomorrow (lowest cost)
   double _urgencyValue = 0.5;
-  double get _urgencyMultiplier => 1.0 + _urgencyValue * 0.5;
+  double get _urgencyMultiplier => 1.5 - _urgencyValue * 0.5;
 
   bool _isLoading = false;
 
@@ -484,50 +484,80 @@ class _UrgencySliderInline extends StatelessWidget {
   final double value;
   final ValueChanged<double> onChanged;
 
-  const _UrgencySliderInline(
-      {required this.value, required this.onChanged});
+  const _UrgencySliderInline({required this.value, required this.onChanged});
+
+  static const _labels = ['15 min', 'Today', 'Tomorrow'];
+  static const _thumbSize = 28.0;
+
+  String get _activeLabel {
+    if (value < 0.33) return '15 min';
+    if (value < 0.67) return 'Today';
+    return 'Tomorrow';
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final fg1 = isDark ? AppColors.platinum : AppColors.spaceIndigo;
-    final trackBg =
-        isDark ? const Color(0x18EDF2F4) : const Color(0x0F2B2D42);
-
-    final labels = ['15 min', 'Today', 'Tomorrow'];
+    final trackBg = isDark ? const Color(0x18EDF2F4) : const Color(0x0F2B2D42);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Urgency', style: AppTextStyles.h4(color: fg1)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Urgency', style: AppTextStyles.h4(color: fg1)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.punchRed.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(Sp.rpill),
+              ),
+              child: Text(
+                _activeLabel,
+                style: AppTextStyles.micro(color: AppColors.punchRed),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
         LayoutBuilder(
           builder: (context, constraints) {
             final trackW = constraints.maxWidth;
-            final thumbX = value * (trackW - 28);
+            final usable = trackW - _thumbSize;
+            final thumbLeft = value * usable;
 
             return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onHorizontalDragStart: (d) {
+                onChanged(((d.localPosition.dx - _thumbSize / 2) / usable).clamp(0.0, 1.0));
+              },
               onHorizontalDragUpdate: (d) {
-                final next =
-                    ((value * trackW + d.delta.dx) / trackW).clamp(0.0, 1.0);
-                onChanged(next);
+                onChanged(((d.localPosition.dx - _thumbSize / 2) / usable).clamp(0.0, 1.0));
+              },
+              onTapDown: (d) {
+                onChanged(((d.localPosition.dx - _thumbSize / 2) / usable).clamp(0.0, 1.0));
               },
               child: SizedBox(
-                height: 40,
+                height: 44,
                 child: Stack(
                   alignment: Alignment.centerLeft,
                   children: [
-                    // Track background
-                    Container(
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: trackBg,
-                        borderRadius: BorderRadius.circular(Sp.rpill),
+                    Positioned(
+                      left: _thumbSize / 2,
+                      right: _thumbSize / 2,
+                      child: Container(
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: trackBg,
+                          borderRadius: BorderRadius.circular(Sp.rpill),
+                        ),
                       ),
                     ),
-                    // Filled track
-                    FractionallySizedBox(
-                      widthFactor: value,
+                    Positioned(
+                      left: _thumbSize / 2,
+                      width: thumbLeft,
                       child: Container(
                         height: 6,
                         decoration: BoxDecoration(
@@ -538,22 +568,19 @@ class _UrgencySliderInline extends StatelessWidget {
                         ),
                       ),
                     ),
-                    // Thumb
                     Positioned(
-                      left: thumbX,
+                      left: thumbLeft,
                       child: Container(
-                        width: 28,
-                        height: 28,
+                        width: _thumbSize,
+                        height: _thumbSize,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                              color: AppColors.punchRed, width: 2.5),
+                          border: Border.all(color: AppColors.punchRed, width: 2.5),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.punchRed.withValues(alpha: 0.25),
-                              blurRadius: 10,
-                              spreadRadius: 2,
+                              color: AppColors.punchRed.withValues(alpha: 0.2),
+                              blurRadius: 8,
                             ),
                           ],
                         ),
@@ -568,10 +595,15 @@ class _UrgencySliderInline extends StatelessWidget {
         const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: labels
-              .map((l) => Text(l,
-                  style: AppTextStyles.micro(color: AppColors.lavenderGrey)))
-              .toList(),
+          children: _labels.map((l) {
+            final isActive = l == _activeLabel;
+            return Text(
+              l,
+              style: AppTextStyles.micro(
+                color: isActive ? AppColors.punchRed : AppColors.lavenderGrey,
+              ),
+            );
+          }).toList(),
         ),
       ],
     );

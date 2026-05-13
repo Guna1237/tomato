@@ -9,6 +9,7 @@ import '../../core/providers/delivery_provider.dart';
 import '../../data/models/delivery.dart';
 import '../../data/models/runner_interest.dart';
 import '../../shared/widgets/back_button_widget.dart';
+import '../../shared/widgets/profile_avatar.dart';
 import '../../shared/widgets/status_chip.dart';
 import '../../shared/widgets/tomato_button.dart';
 import 'widgets/match_graph_animation.dart';
@@ -409,22 +410,16 @@ class _RunnerCard extends StatelessWidget {
       child: Row(
         children: [
           // Avatar
-          CircleAvatar(
+          ProfileAvatar(
+            photoPath: runner?.photoUrl,
+            displayName: runner?.displayName ?? '?',
             radius: 24,
-            backgroundColor:
-                const Color(0xFFEF233C).withValues(alpha: 0.15),
-            backgroundImage: runner?.photoUrl != null
-                ? NetworkImage(runner!.photoUrl!)
-                : null,
-            child: runner?.photoUrl == null
-                ? Text(
-                    runner?.displayName.substring(0, 1) ?? '?',
-                    style: const TextStyle(
-                      color: Color(0xFFEF233C),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  )
-                : null,
+            backgroundColor: const Color(0xFFEF233C).withValues(alpha: 0.15),
+            initialsStyle: const TextStyle(
+              color: Color(0xFFEF233C),
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
           ),
           const SizedBox(width: 12),
           // Info

@@ -119,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen>
     try {
       await supabase.auth.resetPasswordForEmail(
         email,
-        redirectTo: 'https://web-omega-lilac-84.vercel.app/reset-password',
+        redirectTo: 'https://mu-tomato.vercel.app/reset-password',
       );
       if (mounted) setState(() => _resetSent = true);
     } catch (e) {
@@ -135,16 +135,16 @@ class _LoginScreenState extends State<LoginScreen>
       return 'Incorrect email or password';
     }
     if (r.contains('already registered') || r.contains('user already')) {
-      return 'Account exists — sign in instead';
+      return 'Account already exists. Sign in instead.';
     }
     if (r.contains('email not confirmed')) {
       return 'Check your inbox for the verification code';
     }
     if (r.contains('rate') || r.contains('429')) {
-      return 'Too many attempts — wait a minute and try again';
+      return 'Too many attempts. Wait a minute and try again.';
     }
     if (r.contains('network') || r.contains('socket')) {
-      return 'No connection — check your internet';
+      return 'No connection. Check your internet.';
     }
     return 'Something went wrong, try again';
   }
@@ -276,7 +276,7 @@ class _LoginScreenState extends State<LoginScreen>
                     const SizedBox(height: 4),
                     Text(
                       _isSignUp
-                          ? 'Choose a password — we\'ll verify your email with a code'
+                          ? 'Choose a password. We will verify your email with a code.'
                           : 'Sign in to your university account',
                       style: AppTextStyles.body(color: AppColors.lavenderGrey),
                     ),
@@ -351,7 +351,7 @@ class _LoginScreenState extends State<LoginScreen>
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  'Reset link sent — check your MU inbox and follow the link to set a new password.',
+                                  'Reset link sent. Check your MU inbox and follow the link to set a new password.',
                                   style: AppTextStyles.meta(
                                       color: AppColors.leaf500),
                                 ),

@@ -8,7 +8,7 @@ class AppTabBar extends StatelessWidget {
 
   static const _tabs = [
     (Icons.home_rounded, '/home'),
-    (Icons.map_outlined, '/assistant'),
+    (Icons.notifications_outlined, '/notifications'),
     (Icons.add, '/request'),
     (Icons.account_balance_wallet_outlined, '/wallet'),
     (Icons.person_outline_rounded, '/profile'),
@@ -73,8 +73,9 @@ class AppTabBar extends StatelessWidget {
                   );
                 }
 
+                final isNotifications = i == 1;
                 return GestureDetector(
-                  onTap: () => context.go(route),
+                  onTap: () => isNotifications ? context.push(route) : context.go(route),
                   child: SizedBox(
                     width: 52,
                     child: Column(

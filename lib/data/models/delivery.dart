@@ -63,6 +63,8 @@ class Delivery {
   final DateTime? deliveredAt;
   final DateTime? confirmedAt;
   final String? deliveryPin;
+  final double? runnerLat;
+  final double? runnerLng;
 
   const Delivery({
     required this.id,
@@ -82,6 +84,8 @@ class Delivery {
     this.deliveredAt,
     this.confirmedAt,
     this.deliveryPin,
+    this.runnerLat,
+    this.runnerLng,
   });
 
   factory Delivery.fromJson(Map<String, dynamic> json) {
@@ -111,6 +115,8 @@ class Delivery {
           ? DateTime.parse(json['confirmed_at'] as String)
           : null,
       deliveryPin: json['delivery_pin'] as String?,
+      runnerLat: (json['runner_lat'] as num?)?.toDouble(),
+      runnerLng: (json['runner_lng'] as num?)?.toDouble(),
     );
   }
 
