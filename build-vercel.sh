@@ -13,6 +13,9 @@ fi
 
 export PATH="$FLUTTER_DIR/bin:$PATH"
 
+git config --global --add safe.directory "$FLUTTER_DIR"
+git config --global --add safe.directory "$FLUTTER_DIR/bin/cache/dart-sdk"
+
 flutter config --no-analytics
 flutter pub get
 flutter build web --release
