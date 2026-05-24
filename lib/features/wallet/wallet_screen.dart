@@ -87,7 +87,7 @@ class WalletScreen extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    'T$credits',
+                                    '🍅 $credits',
                                     style: AppTextStyles.numericLarge(color: Colors.white),
                                   ),
                                   const SizedBox(height: 8),
@@ -103,9 +103,9 @@ class WalletScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 20),
                         _HeroBtn(
-                          label: 'Earn faster',
+                          label: 'Run a delivery',
                           onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Complete deliveries to earn tomatos'), behavior: SnackBarBehavior.floating, duration: Duration(seconds: 2)),
+                            const SnackBar(content: Text('Enable runner mode in Profile to start earning'), behavior: SnackBarBehavior.floating, duration: Duration(seconds: 2)),
                           ),
                         ),
                       ],

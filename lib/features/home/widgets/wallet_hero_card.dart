@@ -41,7 +41,7 @@ class WalletHeroCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'TOMATO BALANCE',
+                  'BALANCE',
                   style: AppTextStyles.micro(color: Colors.white.withValues(alpha: 0.6)),
                 ),
                 Container(
@@ -73,7 +73,7 @@ class WalletHeroCard extends StatelessWidget {
 
             // Credit amount
             Text(
-              'T$credits',
+              '🍅 $credits',
               style: AppTextStyles.numericLarge(color: Colors.white),
             )
                 .animate(onPlay: (c) => c.repeat(reverse: true))

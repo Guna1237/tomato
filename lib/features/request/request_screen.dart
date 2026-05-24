@@ -222,7 +222,7 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
                               Text('Estimated cost',
                                   style: AppTextStyles.meta(color: AppColors.lavenderGrey)),
                               const SizedBox(height: 4),
-                              Text('T$creditCost',
+                              Text('🍅$creditCost',
                                   style: AppTextStyles.h3(color: fg1)),
                             ],
                           ),
@@ -234,7 +234,7 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
                                   style: AppTextStyles.meta(color: AppColors.lavenderGrey)),
                               const SizedBox(height: 4),
                               Text(
-                                'T$userCredits',
+                                '🍅$userCredits',
                                 style: AppTextStyles.h3(
                                   color: canAfford
                                       ? AppColors.punchRed

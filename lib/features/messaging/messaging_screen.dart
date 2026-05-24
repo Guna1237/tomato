@@ -97,7 +97,7 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
                     children: [
                       Text('Delivery chat',
                           style: AppTextStyles.h3(color: fg1)),
-                      Text('Coordinate with the other party',
+                      Text('Delivery chat',
                           style: AppTextStyles.meta(
                               color: AppColors.lavenderGrey)),
                     ],

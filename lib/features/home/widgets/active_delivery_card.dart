@@ -36,7 +36,7 @@ class ActiveDeliveryCard extends StatelessWidget {
     final displayName = runnerName ?? 'Your runner';
 
     return TomatoCard(
-      onTap: () => context.go('/tracking?delivery_id=${delivery.id}'),
+      onTap: () => context.push('/tracking?delivery_id=${delivery.id}'),
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

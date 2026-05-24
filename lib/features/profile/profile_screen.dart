@@ -463,7 +463,7 @@ class _ProfileBodyState extends ConsumerState<_ProfileBody> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _Stat(value: '${user.streakDays}d', label: 'Streak'),
-                  _Stat(value: 'T${user.tomatoCredits}', label: 'Tomatos'),
+                  _Stat(value: '🍅${user.tomatoCredits}', label: 'Tomatoes'),
                   _Stat(value: '${(user.reliability * 100).toInt()}%', label: 'Reliability'),
                 ],
               ),

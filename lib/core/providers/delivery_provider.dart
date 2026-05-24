@@ -24,8 +24,12 @@ final activeDeliveryProvider = StreamProvider<Delivery?>((ref) {
   final controller = StreamController<Delivery?>.broadcast();
   Delivery? latestRequester;
   Delivery? latestRunner;
+  bool requesterReady = false;
+  bool runnerReady = false;
 
   void emit() {
+    // Don't emit null flash — wait until both streams have responded at least once
+    if (!requesterReady || !runnerReady) return;
     if (!controller.isClosed) {
       controller.add(latestRequester ?? latestRunner);
     }
@@ -37,6 +41,7 @@ final activeDeliveryProvider = StreamProvider<Delivery?>((ref) {
       .eq('requester_id', userId)
       .listen((rows) {
         latestRequester = pickActive(rows);
+        requesterReady = true;
         emit();
       }, onError: controller.addError);
 
@@ -46,6 +51,7 @@ final activeDeliveryProvider = StreamProvider<Delivery?>((ref) {
       .eq('runner_id', userId)
       .listen((rows) {
         latestRunner = pickActive(rows);
+        runnerReady = true;
         emit();
       }, onError: controller.addError);
 

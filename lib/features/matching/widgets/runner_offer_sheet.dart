@@ -93,7 +93,7 @@ class RunnerOfferSheet extends StatelessWidget {
                 _Divider(),
                 _StatCell(label: 'Distance', value: '${runner.distanceKm}km'),
                 _Divider(),
-                _StatCell(label: 'Reward', value: 'T${runner.rewardCredits}', highlight: true),
+                _StatCell(label: 'Reward', value: '🍅${runner.rewardCredits}', highlight: true),
               ],
             ),
           ),

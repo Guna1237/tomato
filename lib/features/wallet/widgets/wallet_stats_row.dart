@@ -33,9 +33,9 @@ class WalletStatsRow extends ConsumerWidget {
 
     return Row(
       children: [
-        _StatCard(label: 'Earned', value: 'T$earned', color: AppColors.leaf500),
+        _StatCard(label: 'Earned', value: '🍅$earned', color: AppColors.leaf500),
         const SizedBox(width: 10),
-        _StatCard(label: 'Spent', value: 'T$spent', color: AppColors.punchRed),
+        _StatCard(label: 'Spent', value: '🍅$spent', color: AppColors.punchRed),
         const SizedBox(width: 10),
         _StatCard(label: 'Helped', value: '$helped', color: AppColors.ember500),
       ],

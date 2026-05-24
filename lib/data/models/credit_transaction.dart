@@ -78,6 +78,6 @@ class CreditTransaction {
 
   String get displayAmount {
     final sign = isIncoming ? '+' : '-';
-    return '${sign}T$amount';
+    return '$sign🍅$amount';
   }
 }
